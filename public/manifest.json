@@ -1,0 +1,24 @@
+{
+  "name": "Anak Pintar",
+  "short_name": "Anak Pintar",
+  "description": "Media pembelajaran interaktif membaca, menulis, matematika, dan kuis cerdas untuk anak 6-10 tahun.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFBEB",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
