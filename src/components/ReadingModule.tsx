@@ -39,7 +39,7 @@ export default function ReadingModule({ onEarnStar, onRecordReading }: ReadingMo
   };
 
   return (
-    <div id="reading-module" className="flex flex-col gap-4 max-w-xl mx-auto pb-20">
+    <div id="reading-module" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
       {/* Sub-tab Navigation */}
       <div className="bg-white/85 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
         <button
@@ -123,7 +123,7 @@ export default function ReadingModule({ onEarnStar, onRecordReading }: ReadingMo
             Sentuh kotak suku kata atau gambar untuk mendengarkan suara pelafalannya:
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {READING_WORDS.map((item) => (
               <div
                 key={item.id}

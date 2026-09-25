@@ -121,7 +121,7 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
   };
 
   return (
-    <div id="math-module" className="flex flex-col gap-4 max-w-xl mx-auto pb-20">
+    <div id="math-module" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
       {/* Operation selector: Penjumlahan vs Pengurangan */}
       <div className="grid grid-cols-2 gap-2 bg-white/80 p-1.5 rounded-2xl shadow-sm border border-amber-100">
         <button

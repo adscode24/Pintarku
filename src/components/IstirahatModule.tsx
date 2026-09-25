@@ -701,7 +701,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   const quotaPercent = Math.max(0, Math.min(100, (quotaRemainingSeconds / MAX_PLAY_QUOTA_SECONDS) * 100));
 
   return (
-    <div className="flex flex-col gap-3.5 max-w-xl mx-auto pb-16 animate-in fade-in">
+    <div className="flex flex-col gap-3.5 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-16 animate-in fade-in">
       {/* 1. Header Banner */}
       <div className="bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-3xl p-4 text-white shadow-md flex items-center justify-between relative overflow-hidden">
         <div className="relative z-10">
@@ -886,7 +886,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           </div>
 
           {/* 5. The Canvas Game Screen */}
-          <div className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-lg border-4 border-emerald-300 mx-auto w-full max-w-[360px] aspect-[9/11] flex items-center justify-center select-none">
+          <div className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-lg border-4 border-emerald-300 mx-auto w-full max-w-[360px] sm:max-w-[420px] md:max-w-[460px] aspect-[9/11] flex items-center justify-center select-none">
             <canvas
               ref={canvasRef}
               onClick={handleJump}

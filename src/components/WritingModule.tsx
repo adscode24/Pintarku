@@ -435,7 +435,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
   };
 
   return (
-    <div id="writing-module" className="flex flex-col gap-4 max-w-xl mx-auto pb-24">
+    <div id="writing-module" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
       {/* Category selector */}
       <div className="bg-white/85 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-amber-100 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
         <button

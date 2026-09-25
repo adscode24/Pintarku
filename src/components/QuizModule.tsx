@@ -165,7 +165,7 @@ export default function QuizModule({ userProfile, onCompleteLevel, onUpdateDiffi
     const currentAns = userAnswers[questionIdx];
 
     return (
-      <div id="active-quiz-view" className="flex flex-col gap-4 max-w-xl mx-auto pb-20">
+      <div id="active-quiz-view" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
         {/* Top bar with back button, level title & progress */}
         <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-between">
           <button
@@ -329,7 +329,7 @@ export default function QuizModule({ userProfile, onCompleteLevel, onUpdateDiffi
     const isPassed = score >= 60;
 
     return (
-      <div id="quiz-result-view" className="flex flex-col gap-4 max-w-xl mx-auto pb-20">
+      <div id="quiz-result-view" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
         <div className="bg-white rounded-3xl p-6 shadow-lg border-2 border-amber-300 text-center flex flex-col items-center gap-4">
           <div className="p-3 bg-amber-50 rounded-3xl border border-amber-200">
             <Trophy className="w-16 h-16 text-amber-500 animate-bounce" />
@@ -467,7 +467,7 @@ export default function QuizModule({ userProfile, onCompleteLevel, onUpdateDiffi
   );
 
   return (
-    <div id="quiz-map-view" className="flex flex-col gap-4 max-w-xl mx-auto pb-20">
+    <div id="quiz-map-view" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-3xl p-4 sm:p-5 text-white shadow-md flex items-center justify-between">
         <div>
@@ -578,7 +578,7 @@ export default function QuizModule({ userProfile, onCompleteLevel, onUpdateDiffi
           </span>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 gap-2.5">
           {currentStageLevels.map((lvl) => {
             const isUnlocked = lvl <= userProfile.highestLevelUnlocked;
             const record = userProfile.levelScores[lvl];
