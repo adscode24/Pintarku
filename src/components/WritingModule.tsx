@@ -359,6 +359,9 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
     } catch {}
     isDrawing.current = false;
     lastPos.current = null;
+    if (e.pointerType === 'touch') {
+      setCursorPos(null);
+    }
   };
 
   const handleVoiceSample = () => {
@@ -654,17 +657,23 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
           {/* Active pointer brush/eraser precision indicator */}
           {cursorPos && (
             <div
-              className="pointer-events-none absolute rounded-full border-2 border-slate-700/80 -translate-x-1/2 -translate-y-1/2 z-10 transition-transform duration-75 ease-out shadow-sm"
+              className="pointer-events-none absolute rounded-full z-20"
               style={{
-                left: `${cursorPos.x}px`,
-                top: `${cursorPos.y}px`,
-                width: `${isEraser ? brushSize * 2.4 : Math.max(14, brushSize)}px`,
-                height: `${isEraser ? brushSize * 2.4 : Math.max(14, brushSize)}px`,
-                backgroundColor: isEraser ? 'rgba(255, 255, 255, 0.75)' : selectedColor,
-                boxShadow: '0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0,0,0,0.2)',
+                top: 0,
+                left: 0,
+                transform: `translate3d(${cursorPos.x}px, ${cursorPos.y}px, 0) translate(-50%, -50%)`,
+                transition: 'none',
+                width: `${isEraser ? brushSize * 2.4 : brushSize}px`,
+                height: `${isEraser ? brushSize * 2.4 : brushSize}px`,
+                border: isEraser ? '2px dashed #f43f5e' : `2px solid ${selectedColor}`,
+                backgroundColor: isEraser ? 'rgba(244, 63, 94, 0.18)' : `${selectedColor}28`,
+                boxShadow: '0 0 0 1.5px rgba(255, 255, 255, 0.95), 0 2px 5px rgba(0,0,0,0.25)',
               }}
             >
-              <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+              <div 
+                className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full" 
+                style={{ backgroundColor: isEraser ? '#f43f5e' : selectedColor }} 
+              />
             </div>
           )}
 

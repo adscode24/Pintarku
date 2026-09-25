@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Anak Pintar</string>
+    <string name="title_activity_main">Anak Pintar</string>
+    <string name="package_name">com.anakpintar.belajar</string>
+    <string name="custom_url_scheme">com.anakpintar.belajar</string>
+</resources>

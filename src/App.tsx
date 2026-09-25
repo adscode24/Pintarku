@@ -18,6 +18,9 @@ import {
   INITIAL_DEFAULT_PROFILE 
 } from './utils/localAuth';
 import confetti from 'canvas-confetti';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { DownloadApkModal } from './components/DownloadApkModal';
 import {
   Home,
   Pencil,
@@ -31,6 +34,8 @@ import {
   ChevronRight,
   Gamepad2,
   LogOut,
+  Download,
+  Smartphone,
   X
 } from 'lucide-react';
 
@@ -54,6 +59,7 @@ export default function App() {
   const [soundOn, setSoundOn] = useState<boolean>(true);
   const [showBadgesModal, setShowBadgesModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+  const [showDownloadApkModal, setShowDownloadApkModal] = useState<boolean>(false);
   const [newBadgeEarned, setNewBadgeEarned] = useState<Badge | null>(null);
 
   // Save profile changes locally to the user's phone storage
@@ -82,6 +88,60 @@ export default function App() {
       }));
     }
   }, [profile.stats, profile.totalStars, profile.highestLevelUnlocked]);
+
+  // Android Native Hardware Back Button & Browser Navigation Handling
+  useEffect(() => {
+    let removeCapListener: (() => void) | null = null;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        CapApp.addListener('backButton', () => {
+          if (showDownloadApkModal) {
+            setShowDownloadApkModal(false);
+            return;
+          }
+          if (showBadgesModal) {
+            setShowBadgesModal(false);
+            return;
+          }
+          if (showProfileModal) {
+            setShowProfileModal(false);
+            return;
+          }
+          if (newBadgeEarned) {
+            setNewBadgeEarned(null);
+            return;
+          }
+          if (activeTab !== 'home') {
+            setActiveTab('home');
+            return;
+          }
+          CapApp.exitApp();
+        }).then((sub) => {
+          removeCapListener = () => sub.remove();
+        });
+      }
+    } catch {}
+
+    const handlePopState = () => {
+      if (showDownloadApkModal) {
+        setShowDownloadApkModal(false);
+      } else if (showBadgesModal) {
+        setShowBadgesModal(false);
+      } else if (showProfileModal) {
+        setShowProfileModal(false);
+      } else if (newBadgeEarned) {
+        setNewBadgeEarned(null);
+      } else if (activeTab !== 'home') {
+        setActiveTab('home');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      if (removeCapListener) removeCapListener();
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [showDownloadApkModal, showBadgesModal, showProfileModal, newBadgeEarned, activeTab]);
 
   const handleEarnStar = () => {
     setProfile((prev) => ({
@@ -161,6 +221,9 @@ export default function App() {
   const changeTab = (tab: TabType) => {
     playSound('click');
     setActiveTab(tab);
+    try {
+      window.history.pushState({ tab }, '', '');
+    } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -177,13 +240,13 @@ export default function App() {
   }
 
   return (
-    <div className="h-[100dvh] w-full bg-slate-900 text-slate-800 flex flex-col items-center justify-center p-0 sm:p-3 select-none font-['Quicksand',sans-serif] overflow-hidden">
-      {/* Smartphone Shell: neatly fits 1 phone screen on mobile and centered phone frame on desktop */}
-      <div className="w-full max-w-[430px] h-full sm:h-[min(96vh,860px)] bg-slate-950 sm:rounded-[42px] sm:p-2.5 sm:shadow-2xl sm:ring-8 sm:ring-slate-800/80 flex flex-col justify-center overflow-hidden">
+    <div className="h-[100dvh] w-full bg-amber-50 md:bg-slate-900 text-slate-800 flex flex-col items-center justify-center p-0 md:p-3 select-none font-['Quicksand',sans-serif] overflow-hidden">
+      {/* Smartphone Shell: neatly fits 100% on mobile and tablet, centered phone frame on desktop */}
+      <div className="w-full md:max-w-[430px] h-full md:h-[min(96vh,860px)] bg-transparent md:bg-slate-950 md:rounded-[42px] md:p-2.5 md:shadow-2xl md:ring-8 md:ring-slate-800/80 flex flex-col justify-center overflow-hidden">
         {/* Android Device Body Inner Screen */}
-        <div className="w-full h-full bg-gradient-to-b from-amber-50 via-amber-50/70 to-orange-50/40 rounded-none sm:rounded-[34px] overflow-hidden flex flex-col relative shadow-inner border sm:border-amber-100/80">
-          {/* 1. Android Status Bar */}
-          <div className="bg-amber-100/80 backdrop-blur-md px-5 py-1.5 flex items-center justify-between text-slate-700 text-[11px] font-bold border-b border-amber-200/50 shrink-0 z-20">
+        <div className="w-full h-full bg-gradient-to-b from-amber-50 via-amber-50/70 to-orange-50/40 rounded-none md:rounded-[34px] overflow-hidden flex flex-col relative shadow-inner md:border md:border-amber-100/80">
+          {/* 1. Android Status Bar (Preview Only on Desktop) */}
+          <div className="hidden md:flex bg-amber-100/80 backdrop-blur-md px-5 py-1.5 items-center justify-between text-slate-700 text-[11px] font-bold border-b border-amber-200/50 shrink-0 z-20">
             <span>09:41</span>
             {/* Camera Punch Hole */}
             <div className="w-3.5 h-3.5 rounded-full bg-slate-900 mx-auto shadow-inner" />
@@ -195,7 +258,7 @@ export default function App() {
           </div>
 
           {/* 2. Top App Header Bar */}
-          <header className="bg-white/95 backdrop-blur-md border-b border-amber-200/80 px-3 py-2 flex items-center justify-between shrink-0 z-30 shadow-xs">
+          <header className="bg-white/95 backdrop-blur-md border-b border-amber-200/80 px-3 py-2 flex items-center justify-between shrink-0 z-30 shadow-xs safe-top">
             {/* Child Avatar & Name */}
             <button
               id="btn-open-profile"
@@ -226,6 +289,17 @@ export default function App() {
                 <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 animate-pulse" />
                 <span className="font-fredoka font-bold text-xs">{profile.totalStars}</span>
               </div>
+
+              {/* Download APK Android button */}
+              <button
+                id="btn-download-apk-header"
+                onClick={() => { setShowDownloadApkModal(true); playSound('click'); }}
+                className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl active:scale-95 transition-all flex items-center gap-1 font-fredoka font-bold text-xs shadow-2xs border border-emerald-300/60"
+                title="Unduh File APK Android"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px]">APK</span>
+              </button>
 
               {/* Badges Trophy button */}
               <button
@@ -305,6 +379,36 @@ export default function App() {
                   <div className="absolute -bottom-2 -right-1 text-5xl opacity-80 select-none pointer-events-none transform -rotate-12">
                     🌟
                   </div>
+                </div>
+
+                {/* Android APK Download Banner */}
+                <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-2.5 text-white shadow-xs flex items-center justify-between gap-2.5 border border-emerald-400/40">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-lg shrink-0 shadow-inner">
+                      🤖
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1 text-[9px] text-emerald-200 font-bold uppercase tracking-wider">
+                        <Sparkles className="w-3 h-3 text-yellow-300" />
+                        <span>Aplikasi Android</span>
+                      </div>
+                      <h3 className="font-fredoka font-bold text-xs leading-tight truncate">
+                        Download Berkas APK
+                      </h3>
+                      <p className="text-[10px] text-emerald-100 leading-tight">
+                        Format APK siap pasang di HP &amp; main offline
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    id="btn-open-download-modal-home"
+                    onClick={() => { setShowDownloadApkModal(true); playSound('click'); }}
+                    className="py-1.5 px-3 bg-white text-emerald-800 hover:bg-emerald-50 active:scale-95 font-fredoka font-bold text-xs rounded-xl shadow-xs flex items-center gap-1 shrink-0 transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Unduh APK</span>
+                  </button>
                 </div>
 
                 {/* 4 Main Subject Learning Cards in a neat 2x2 Grid */}
@@ -471,7 +575,7 @@ export default function App() {
           {/* 4. Floating Bottom Navigation Bar */}
           <nav
             id="floating-nav-bar"
-            className="absolute bottom-3 left-2.5 right-2.5 max-w-[390px] mx-auto bg-white/92 backdrop-blur-xl border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-full px-1.5 py-1 flex items-center justify-around z-40 ring-1 ring-slate-900/5"
+            className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-2.5 right-2.5 max-w-[390px] mx-auto bg-white/92 backdrop-blur-xl border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-full px-1.5 py-1 flex items-center justify-around z-40 ring-1 ring-slate-900/5"
           >
             <button
               id="nav-home"
@@ -566,7 +670,7 @@ export default function App() {
           className="fixed inset-0 z-50 bg-slate-900 flex flex-col text-slate-800 overflow-y-auto animate-in fade-in"
         >
           {/* Top Fullscreen Header with Prominent Exit Button */}
-          <header className="bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 py-2.5 border-b border-slate-800 flex items-center justify-between sticky top-0 z-50 text-white shadow-md">
+          <header className="bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 py-2.5 border-b border-slate-800 flex items-center justify-between sticky top-0 z-50 text-white shadow-md safe-top">
             <div className="flex items-center gap-2.5">
               <span className="text-2xl select-none">🎮</span>
               <div>
@@ -625,6 +729,12 @@ export default function App() {
           onClose={() => setShowProfileModal(false)}
         />
       )}
+
+      {/* Download APK Modal */}
+      <DownloadApkModal
+        isOpen={showDownloadApkModal}
+        onClose={() => setShowDownloadApkModal(false)}
+      />
 
       {/* Celebration Popup when new badge earned */}
       {newBadgeEarned && (
