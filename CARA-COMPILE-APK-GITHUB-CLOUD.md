@@ -43,7 +43,7 @@ git push -u origin main
 3. Anda akan melihat alur kerja bernama:
    **"Build Native Android APK (GitHub Cloud)"** sedang berjalan secara otomatis (simbol kuning berputar).
 4. GitHub Cloud akan menjalankan:
-   - ✅ Setup Node.js 20 & install dependencies
+   - ✅ Setup Node.js 22 (LTS) & install dependencies
    - ✅ Compile kode sumber web frontend (`vite build`)
    - ✅ Sinkronisasi Capacitor native bridge (`cap sync android`)
    - ✅ Setup OpenJDK 21 & Android SDK Platform Tools (API 35)
