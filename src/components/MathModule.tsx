@@ -5,7 +5,6 @@ import confetti from 'canvas-confetti';
 import { 
   Plus, 
   Minus, 
-  Volume2, 
   Sparkles, 
   HelpCircle, 
   RotateCcw, 
@@ -102,13 +101,6 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
     }
   };
 
-  const handleVoiceExplain = () => {
-    playSound('pop');
-    const wordOp = opType === 'addition' ? 'ditambah' : 'dikurangi';
-    const text = `${currentProblem.num1} ${wordOp} ${currentProblem.num2} sama dengan ${correctAnswer}.`;
-    speakIndonesian(text);
-  };
-
   const toggleCrossItem = (index: number) => {
     playSound('pop');
     if (subtractedIndices.includes(index)) {
@@ -202,15 +194,6 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button
-              id="btn-math-voice"
-              onClick={handleVoiceExplain}
-              className="p-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-xl flex items-center gap-1 font-bold text-xs"
-              title="Dengarkan Suara Guru"
-            >
-              <Volume2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Suara</span>
-            </button>
             <button
               id="btn-math-new"
               onClick={() => loadNewProblem()}
