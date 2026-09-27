@@ -28,14 +28,40 @@ with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             rel_path = os.path.relpath(full_path, BASE_DIR)
             zipf.write(full_path, rel_path)
             
-    # Add top-level config files
-    for root_file in ["capacitor.config.ts", "package.json", "index.html"]:
+    # Add top-level config files and source directories
+    include_files = [
+        "capacitor.config.ts", 
+        "package.json", 
+        "index.html",
+        "tsconfig.json",
+        "vite.config.ts",
+        ".gitignore"
+    ]
+    for root_file in include_files:
         full_path = os.path.join(BASE_DIR, root_file)
         if os.path.exists(full_path):
             zipf.write(full_path, root_file)
 
+    # Add .github workflows for GitHub Cloud compile
+    github_dir = os.path.join(BASE_DIR, ".github")
+    if os.path.exists(github_dir):
+        for root, dirs, files in os.walk(github_dir):
+            for f in files:
+                full_p = os.path.join(root, f)
+                rel_p = os.path.relpath(full_p, BASE_DIR)
+                zipf.write(full_p, rel_p)
+
+    # Add src directory
+    src_dir = os.path.join(BASE_DIR, "src")
+    if os.path.exists(src_dir):
+        for root, dirs, files in os.walk(src_dir):
+            for f in files:
+                full_p = os.path.join(root, f)
+                rel_p = os.path.relpath(full_p, BASE_DIR)
+                zipf.write(full_p, rel_p)
+
     # Add README instructions
-    readme_content = """# Anak Pintar - Proyek Android Studio (Capacitor)
+    readme_content = """# Anak Pintar - Native Android APK Project
 ===================================================
 
 Aplikasi edukasi interaktif anak usia 6-10 tahun:
@@ -45,15 +71,32 @@ Aplikasi edukasi interaktif anak usia 6-10 tahun:
 - 200 Level Kuis Interaktif
 - Istirahat Game Apel Berkarakter
 
-## Cara Membuka & Build di Android Studio:
+## CARA 1: COMPILE APK DENGAN GITHUB CLOUD (OTOMATIS & CEPAT)
+Proyek ini sudah dilengkapi dengan konfigurasi GitHub Actions Cloud CI (.github/workflows/build-apk.yml).
+Tidak perlu menginstall Android Studio atau Java di komputer Anda!
+
+Langkah-langkah:
+1. Buat repository baru di GitHub (misal: 'anak-pintar-app').
+2. Upload / push seluruh berkas proyek ini ke repository GitHub Anda:
+   git remote add origin https://github.com/USERNAME/anak-pintar-app.git
+   git branch -M main
+   git push -u origin main
+3. Buka tab **Actions** di repository GitHub Anda.
+4. Workflow **"Build Native Android APK (GitHub Cloud)"** akan otomatis berjalan.
+5. Setelah selesai (berwarna hijau centang), klik hasil workflow dan unduh file APK dari bagian **Artifacts**:
+   - `AnakPintar-release.apk`
+   - `AnakPintar-debug.apk`
+6. File APK tersebut adalah Native APK resmi yang siap dipasang langsung di HP atau Tablet Android.
+
+## CARA 2: COMPILE LOKAL DENGAN ANDROID STUDIO
 1. Pastikan Anda telah menginstal Android Studio & Android SDK (API 34/35).
 2. Buka Android Studio -> Pilih "Open an Existing Project".
 3. Pilih folder 'android' dari folder proyek ini.
 4. Biarkan Gradle melakukan sync.
-5. Jalankan ke HP fisik atau Emulator melalui tombol "Run" (Shift + F10),
-   atau buat APK rilis via menu: Build > Build Bundle(s) / APK(s) > Build APK(s).
+5. Buat APK rilis via menu: Build > Build Bundle(s) / APK(s) > Build APK(s).
+6. File APK akan berada di: android/app/build/outputs/apk/release/app-release.apk
 """
-    zipf.writestr("README-CARA-BUILD.txt", readme_content)
+    zipf.writestr("README-CARA-BUILD-APK.txt", readme_content)
 
 print(f"Project ZIP created: {os.path.getsize(zip_path)} bytes")
 

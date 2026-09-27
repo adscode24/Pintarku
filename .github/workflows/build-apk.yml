@@ -1,0 +1,94 @@
+name: Build Native Android APK (GitHub Cloud)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Compile Native Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: |
+          npm install
+
+      - name: Build Web Application
+        run: |
+          npm run lint
+          npx vite build
+
+      - name: Sync Capacitor Android
+        run: |
+          npx cap sync android
+
+      - name: Set up Java JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK & Build Tools
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle Wrapper Executable
+        run: |
+          chmod +x android/gradlew
+
+      - name: Build Native APKs with Gradle
+        run: |
+          cd android
+          ./gradlew assembleDebug assembleRelease --stacktrace
+
+      - name: Organize Compiled APK Files
+        run: |
+          mkdir -p build-apks
+          # Copy Debug APK
+          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp android/app/build/outputs/apk/debug/app-debug.apk build-apks/AnakPintar-debug.apk
+            echo "Debug APK found and copied."
+          fi
+          # Copy Release APK
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk build-apks/AnakPintar-release.apk
+            echo "Release APK found and copied."
+          fi
+          # Also copy unsigned release if generated
+          if [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-apks/AnakPintar-release-unsigned.apk
+          fi
+          ls -lh build-apks/
+
+      - name: Upload Native APK as GitHub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnakPintar-Native-APK
+          path: build-apks/*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release with APK (on tag or manual dispatch)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build-apks/*.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
