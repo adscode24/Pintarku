@@ -32,6 +32,7 @@ with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
     include_files = [
         "capacitor.config.ts", 
         "package.json", 
+        "package-lock.json",
         "index.html",
         "tsconfig.json",
         "vite.config.ts",
