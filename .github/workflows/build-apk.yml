@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Compile Native Android APK
+    name: Compile Native Android APK + AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -28,12 +28,32 @@ jobs:
 
       - name: Install Node Dependencies
         run: |
-          npm install
+          npm ci
 
       - name: Build Web Application
         run: |
           npm run lint
           npx vite build
+
+      - name: Drop web downloads from native bundle
+        run: |
+          rm -rf dist/downloads
+
+      - name: Restore release keystore (optional, via Secrets)
+        if: secrets.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/pintarku-release.keystore
+          cat > android/keystore.properties <<EOF
+          storeFile=pintarku-release.keystore
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
 
       - name: Sync Capacitor Android
         run: |
@@ -52,42 +72,30 @@ jobs:
         run: |
           chmod +x android/gradlew
 
-      - name: Build Native APKs with Gradle
+      - name: Build Native Release APK + AAB with Gradle
         run: |
           cd android
-          ./gradlew assembleDebug assembleRelease --stacktrace
+          ./gradlew assembleRelease bundleRelease --stacktrace
 
-      - name: Organize Compiled APK Files
+      - name: Organize Compiled Files
         run: |
           mkdir -p build-apks
-          # Copy Debug APK
-          if [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp android/app/build/outputs/apk/debug/app-debug.apk build-apks/AnakPintar-debug.apk
-            echo "Debug APK found and copied."
-          fi
-          # Copy Release APK
-          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk build-apks/AnakPintar-release.apk
-            echo "Release APK found and copied."
-          fi
-          # Also copy unsigned release if generated
-          if [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-apks/AnakPintar-release-unsigned.apk
-          fi
+          cp android/app/build/outputs/apk/release/app-release.apk build-apks/AnakPintar-release.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab build-apks/AnakPintar-release.aab
           ls -lh build-apks/
 
-      - name: Upload Native APK as GitHub Artifact
+      - name: Upload Native APK + AAB as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AnakPintar-Native-APK
-          path: build-apks/*.apk
+          name: AnakPintar-Native-Release
+          path: build-apks/*
           retention-days: 30
 
-      - name: Create GitHub Release with APK (on tag or manual dispatch)
+      - name: Create GitHub Release with APK + AAB (on tag or manual dispatch)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build-apks/*.apk
+          files: build-apks/*
           draft: false
           prerelease: false
           generate_release_notes: true
