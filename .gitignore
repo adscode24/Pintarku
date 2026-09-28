@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+# Generated release binaries - built by CI/local Gradle, never commit
+*.apk
+*.aab
+*.keystore
+public/downloads/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/.gradle/
