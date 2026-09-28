@@ -34,13 +34,9 @@ jobs:
         run: |
           npm run lint
           npx vite build
-
-      - name: Drop web downloads from native bundle
-        run: |
           rm -rf dist/downloads
 
-      - name: Restore release keystore (from Secrets)
-        if: secrets.ANDROID_KEYSTORE_BASE64 != ''
+      - name: Restore release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -48,12 +44,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/pintarku-release.keystore
-          cat > android/keystore.properties <<EOF
-          storeFile=pintarku-release.keystore
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          keyPassword=$ANDROID_KEY_PASSWORD
-          EOF
+          printf 'storeFile=pintarku-release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/keystore.properties
 
       - name: Sync Capacitor Android
         run: |
