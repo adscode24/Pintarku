@@ -12,17 +12,18 @@ import {
   BookOpen,
   Pencil,
   Calculator,
-  Flame,
-  Volume2,
-  AlertCircle,
   Play,
-  Pause,
   ChevronRight,
-  ShieldAlert,
   Coffee,
   LogOut,
-  X
+  X,
+  Maximize2,
+  Minimize2,
+  Zap,
+  CheckCircle2,
+  Users
 } from 'lucide-react';
+import SchoolItems3DGame from './SchoolItems3DGame';
 
 interface IstirahatModuleProps {
   onNavigateTab: (tab: 'home' | 'writing' | 'reading' | 'math' | 'quiz') => void;
@@ -102,6 +103,9 @@ interface Particle {
 }
 
 export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: IstirahatModuleProps) {
+  // Navigation between Istirahat menu and games
+  const [activeGame, setActiveGame] = useState<'menu' | 'apple' | 'school3d'>('menu');
+
   // Persistence state
   const [selectedChar, setSelectedChar] = useState<GameCharacter>(() => {
     try {
@@ -146,11 +150,13 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     return null;
   });
 
-  // Game execution state
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
+  // Apple Game execution state: character_select -> playing -> gameover
+  const [gameState, setGameState] = useState<'character_select' | 'playing' | 'gameover'>('character_select');
   const [applesCollected, setApplesCollected] = useState<number>(0);
   const [sessionTimeSeconds, setSessionTimeSeconds] = useState<number>(0);
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState<number>(0);
+  const [speedBoostNotification, setSpeedBoostNotification] = useState<string | null>(null);
+  const [isFullscreenApple, setIsFullscreenApple] = useState<boolean>(true);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
@@ -161,15 +167,17 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     charVy: 0,
     gravity: 0.36,
     jumpForce: -6.4,
-    canvasWidth: 380,
-    canvasHeight: 460,
+    canvasWidth: 420,
+    canvasHeight: 520,
     apples: [] as CollectibleApple[],
     particles: [] as Particle[],
     floatingScores: [] as FloatingScore[],
     speed: 2.2,
+    baseSpeed: 2.2,
+    speedMultiplier: 1.0,
     frameCount: 0,
     charRotation: 0,
-    groundY: 420,
+    groundY: 480,
     currentScore: 0,
     currentSurvivalSec: 0,
   });
@@ -204,7 +212,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
         setCooldownRemainingSeconds(remaining);
         if (remaining <= 0) {
-          // Cooldown finished! Reset quota!
           setCooldownUntil(null);
           setQuotaRemainingSeconds(MAX_PLAY_QUOTA_SECONDS);
           playSound('victory');
@@ -221,13 +228,31 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     if (gameState !== 'playing' || cooldownUntil !== null) return;
 
     const interval = setInterval(() => {
-      setSessionTimeSeconds((prev) => prev + 1);
-      gameRef.current.currentSurvivalSec += 1;
+      setSessionTimeSeconds((prev) => {
+        const nextTime = prev + 1;
+        gameRef.current.currentSurvivalSec = nextTime;
+
+        // TANTANGAN KECEPATAN: Tambah kecepatan 0.5x setiap 30 detik!
+        if (nextTime > 0 && nextTime % 30 === 0) {
+          const speedStep = Math.floor(nextTime / 30);
+          const newMultiplier = 1.0 + speedStep * 0.5;
+          gameRef.current.speedMultiplier = newMultiplier;
+          gameRef.current.speed = gameRef.current.baseSpeed * newMultiplier;
+
+          playSound('star');
+          const notice = `⚡ TANTANGAN NAIK! Kecepatan +0.5x (${newMultiplier.toFixed(1)}x)`;
+          setSpeedBoostNotification(notice);
+          setTimeout(() => {
+            setSpeedBoostNotification((curr) => (curr === notice ? null : curr));
+          }, 3000);
+        }
+
+        return nextTime;
+      });
 
       setQuotaRemainingSeconds((prevQuota) => {
         const nextQuota = prevQuota - 1;
         if (nextQuota <= 0) {
-          // QUOTA EXHAUSTED! Trigger 10-minute cooldown
           triggerCooldown();
           return 0;
         }
@@ -243,7 +268,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     const until = Date.now() + COOLDOWN_DURATION_SECONDS * 1000;
     setCooldownUntil(until);
     setCooldownRemainingSeconds(COOLDOWN_DURATION_SECONDS);
-    setGameState('idle');
+    setGameState('character_select');
+    setActiveGame('menu');
     playSound('wrong');
     speakIndonesian('Belajar lagi, Yuk. 10 menit lagi kamu bisa main lagi.');
   }, []);
@@ -252,7 +278,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   const handleJump = useCallback(() => {
     if (cooldownUntil !== null) return;
 
-    if (gameState === 'idle') {
+    if (gameState === 'character_select') {
       startNewGame();
       return;
     }
@@ -266,14 +292,16 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   // Keyboard space / up arrow controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        e.preventDefault();
-        handleJump();
+      if (activeGame === 'apple') {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+          e.preventDefault();
+          handleJump();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleJump]);
+  }, [handleJump, activeGame]);
 
   // Start new game run
   const startNewGame = () => {
@@ -293,9 +321,12 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     g.frameCount = 0;
     g.currentScore = 0;
     g.currentSurvivalSec = 0;
+    g.speedMultiplier = 1.0;
+    g.speed = g.baseSpeed;
 
     setApplesCollected(0);
     setSessionTimeSeconds(0);
+    setSpeedBoostNotification(null);
     setGameState('playing');
     playSound('pop');
   };
@@ -321,27 +352,26 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       playSound('victory');
     }
 
-    // Reward star if collected 5 or more apples in this run
     if (finalScore >= 5 && onEarnStar) {
       onEarnStar();
     }
   }, [highScore, onEarnStar]);
 
-  // Setup Canvas & Game Loop
+  // Setup Canvas & Game Loop for Apple Game
   useEffect(() => {
+    if (activeGame !== 'apple') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set high-DPI canvas size
-    const width = 360;
-    const height = 440;
+    const width = 420;
+    const height = 540;
     canvas.width = width;
     canvas.height = height;
     gameRef.current.canvasWidth = width;
     gameRef.current.canvasHeight = height;
-    gameRef.current.groundY = height - 40;
+    gameRef.current.groundY = height - 50;
 
     const activeChar = CHARACTERS.find((c) => c.id === selectedChar) || CHARACTERS[0];
 
@@ -349,16 +379,16 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       const g = gameRef.current;
       g.frameCount++;
 
-      // 1. Clear background & draw sky gradient
+      // 1. Sky gradient
       const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-      skyGrad.addColorStop(0, '#7dd3fc'); // sky blue
+      skyGrad.addColorStop(0, '#7dd3fc');
       skyGrad.addColorStop(0.65, '#bae6fd');
-      skyGrad.addColorStop(1, '#fed7aa'); // warm horizon
+      skyGrad.addColorStop(1, '#fed7aa');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // 2. Draw moving background clouds & rolling scenery
-      const cloudSpeed = gameState === 'playing' ? 0.6 : 0.2;
+      // 2. Moving clouds
+      const cloudSpeed = (gameState === 'playing' ? 0.6 : 0.2) * g.speedMultiplier;
       const cloudOffset1 = (g.frameCount * cloudSpeed) % (width + 120);
       const cloudOffset2 = (g.frameCount * cloudSpeed * 0.7 + 160) % (width + 120);
 
@@ -371,34 +401,32 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.arc(cx + 18 * scale, cy + 8 * scale, 16 * scale, 0, Math.PI * 2);
         ctx.fill();
       };
-      drawCloud(width - cloudOffset1 + 40, 55, 0.85);
-      drawCloud(width - cloudOffset2 + 50, 105, 1.1);
+      drawCloud(width - cloudOffset1 + 40, 55, 0.9);
+      drawCloud(width - cloudOffset2 + 50, 115, 1.15);
 
-      // Distant rolling green hills (no obstacles/hambatan)
+      // Distant rolling green hills
       ctx.fillStyle = '#bbf7d0';
       ctx.beginPath();
-      ctx.arc(width * 0.2, g.groundY + 40, 130, Math.PI, 0);
+      ctx.arc(width * 0.2, g.groundY + 40, 150, Math.PI, 0);
       ctx.fill();
       ctx.fillStyle = '#86efac';
       ctx.beginPath();
-      ctx.arc(width * 0.78, g.groundY + 40, 150, Math.PI, 0);
+      ctx.arc(width * 0.78, g.groundY + 40, 170, Math.PI, 0);
       ctx.fill();
 
       // 3. Update physics if playing
       if (gameState === 'playing') {
         g.charVy += g.gravity;
         g.charY += g.charVy;
-
-        // Rotation tilts up when jumping, tilts down when falling
         g.charRotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, g.charVy * 0.08));
 
-        // Spawn Apples continuously (tanpa rintangan/tiang)
-        if (g.frameCount % 50 === 0) {
+        // Spawn Apples
+        const spawnInterval = Math.max(20, Math.round(48 / Math.sqrt(g.speedMultiplier)));
+        if (g.frameCount % spawnInterval === 0) {
           const randType = Math.random();
 
-          if (randType < 0.18) {
-            // Arc formation of 3 apples
-            const startY = 110 + Math.random() * 120;
+          if (randType < 0.2) {
+            const startY = 110 + Math.random() * 140;
             const offsets = [25, 0, 25];
             offsets.forEach((offY, idx) => {
               g.apples.push({
@@ -411,11 +439,10 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
                 points: 1,
               });
             });
-          } else if (randType < 0.32) {
-            // Golden Bonus Apple (worth 3 points!)
+          } else if (randType < 0.35) {
             g.apples.push({
               x: width + 25,
-              y: 80 + Math.random() * 180,
+              y: 80 + Math.random() * 200,
               size: 20,
               collected: false,
               floatOffset: Math.random() * Math.PI * 2,
@@ -423,7 +450,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
               points: 3,
             });
           } else {
-            // Normal Red Apple at varying comfortable heights
             g.apples.push({
               x: width + 20,
               y: 70 + Math.random() * (g.groundY - 140),
@@ -441,19 +467,17 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           const apple = g.apples[i];
           apple.x -= g.speed;
 
-          // Remove off-screen apples
           if (apple.x < -30) {
             g.apples.splice(i, 1);
             continue;
           }
 
-          // Check Apple Collision with Character (Kumpulkan apel 🍎)
-          const charX = 80;
+          const charX = 85;
           const dx = charX - apple.x;
           const dy = g.charY - apple.y;
           const dist = Math.hypot(dx, dy);
 
-          if (dist < 30 && !apple.collected) {
+          if (dist < 32 && !apple.collected) {
             apple.collected = true;
             g.currentScore += apple.points;
             setApplesCollected(g.currentScore);
@@ -464,7 +488,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
               playSound('apple');
             }
 
-            // Emit sparkle particles
             const particleCount = apple.isGolden ? 14 : 8;
             for (let p = 0; p < particleCount; p++) {
               g.particles.push({
@@ -480,7 +503,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
               });
             }
 
-            // Emit Floating Score (+1 🍎 atau +3 ⭐)
             g.floatingScores.push({
               x: apple.x,
               y: apple.y - 12,
@@ -494,21 +516,21 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           }
         }
 
-        // Check Ground Collision: Jika jatuh ke tanah maka gagal!
-        if (g.charY + 16 >= g.groundY) {
-          g.charY = g.groundY - 16;
+        // Ground Collision
+        if (g.charY + 18 >= g.groundY) {
+          g.charY = g.groundY - 18;
           handleGameOver('Jatuh ke tanah!');
           return;
         }
 
-        // Soft top ceiling boundary
-        if (g.charY - 16 <= 0) {
-          g.charY = 16;
+        // Ceiling boundary
+        if (g.charY - 18 <= 0) {
+          g.charY = 18;
           g.charVy = 0;
         }
       }
 
-      // 4. Draw Apples (🍎 & Golden 🍏/⭐)
+      // 4. Draw Apples
       g.apples.forEach((apple) => {
         const floatY = apple.y + Math.sin(g.frameCount * 0.1 + apple.floatOffset) * 5;
 
@@ -516,7 +538,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.translate(apple.x, floatY);
 
         if (apple.isGolden) {
-          // Golden glowing ring & starburst
           ctx.fillStyle = 'rgba(254, 240, 138, 0.85)';
           ctx.beginPath();
           ctx.arc(0, 0, 22, 0, Math.PI * 2);
@@ -531,7 +552,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           ctx.textBaseline = 'middle';
           ctx.fillText('🍏', 0, 2);
         } else {
-          // Normal Red Apple glowing backdrop
           ctx.fillStyle = 'rgba(254, 240, 138, 0.65)';
           ctx.beginPath();
           ctx.arc(0, 0, 18, 0, Math.PI * 2);
@@ -546,12 +566,12 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.restore();
       });
 
-      // 6. Draw Particles (Apple collection sparkles)
+      // 5. Draw Particles
       for (let i = g.particles.length - 1; i >= 0; i--) {
         const p = g.particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.alpha -= 0.035;
+        p.alpha -= 0.025;
 
         if (p.alpha <= 0) {
           g.particles.splice(i, 1);
@@ -559,7 +579,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         }
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -567,7 +587,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.restore();
       }
 
-      // 6. Draw Floating Score Numbers (+1 🍎, +3 🌟)
+      // 6. Draw Floating Score Text
       for (let i = g.floatingScores.length - 1; i >= 0; i--) {
         const fs = g.floatingScores[i];
         fs.y += fs.vy;
@@ -579,75 +599,67 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         }
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, fs.alpha);
-        ctx.font = 'bold 15px Fredoka, sans-serif';
+        ctx.globalAlpha = fs.alpha;
         ctx.fillStyle = fs.color;
+        ctx.font = 'bold 16px Fredoka, sans-serif';
         ctx.textAlign = 'center';
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
-        ctx.shadowBlur = 4;
         ctx.fillText(fs.text, fs.x, fs.y);
         ctx.restore();
       }
 
       // 7. Draw Character
-      const charX = 80;
-      const charY = gameState === 'idle' ? 180 + Math.sin(g.frameCount * 0.08) * 8 : g.charY;
+      const charX = 85;
+      const charDrawY = gameState === 'playing' ? g.charY : 180 + Math.sin(g.frameCount * 0.05) * 12;
 
       ctx.save();
-      ctx.translate(charX, charY);
-      ctx.rotate(gameState === 'playing' ? g.charRotation : 0);
+      ctx.translate(charX, charDrawY);
+      ctx.rotate(g.charRotation);
 
-      // Character shadow / aura
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.beginPath();
-      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw Emoji Character
-      ctx.font = '34px sans-serif';
+      ctx.font = '36px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(activeChar.emoji, 0, 2);
 
-      // Subtle wing flap indicator
-      if (gameState === 'playing' && g.charVy < 0) {
-        ctx.font = '14px sans-serif';
-        ctx.fillText('💨', -18, 12);
+      if (g.speedMultiplier > 1.0 && gameState === 'playing') {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-20, -6);
+        ctx.lineTo(-38 - (g.speedMultiplier - 1) * 15, -6);
+        ctx.moveTo(-18, 6);
+        ctx.lineTo(-34 - (g.speedMultiplier - 1) * 15, 6);
+        ctx.stroke();
       }
 
       ctx.restore();
 
       // 8. Draw Ground & Grass
-      const groundGrad = ctx.createLinearGradient(0, g.groundY, 0, height);
-      groundGrad.addColorStop(0, '#84cc16'); // bright grass green
-      groundGrad.addColorStop(0.2, '#65a30d');
-      groundGrad.addColorStop(1, '#78350f'); // warm dirt
-      ctx.fillStyle = groundGrad;
+      ctx.fillStyle = '#4ade80';
       ctx.fillRect(0, g.groundY, width, height - g.groundY);
 
-      // Grass blades line
-      ctx.strokeStyle = '#4d7c0f';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, g.groundY);
-      ctx.lineTo(width, g.groundY);
-      ctx.stroke();
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, g.groundY, width, 8);
 
-      // Moving ground pattern
-      const groundOffset = (g.frameCount * (gameState === 'playing' ? g.speed : 0.8)) % 24;
-      ctx.fillStyle = '#a3e635';
-      for (let x = -groundOffset; x < width + 24; x += 24) {
+      const groundOffset = (g.frameCount * g.speed) % 40;
+      ctx.fillStyle = '#16a34a';
+      for (let gx = -groundOffset; gx < width + 40; gx += 40) {
         ctx.beginPath();
-        ctx.arc(x + 12, g.groundY + 4, 3, 0, Math.PI * 2);
+        ctx.arc(gx + 12, g.groundY + 12, 4, 0, Math.PI * 2);
+        ctx.arc(gx + 24, g.groundY + 18, 3, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 9. In-game live HUD on canvas
+      // 9. In-Canvas Top Status Badges
       if (gameState === 'playing') {
-        // Apples count badge
+        // Score Badge
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.beginPath();
-        ctx.roundRect(12, 12, 105, 36, 18);
+        ctx.roundRect(14, 14, 115, 38, 19);
         ctx.fill();
         ctx.strokeStyle = '#fecaca';
         ctx.lineWidth = 1.5;
@@ -657,12 +669,26 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.fillStyle = '#dc2626';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`🍎 ${g.currentScore}`, 24, 30);
+        ctx.fillText(`🍎 ${g.currentScore}`, 26, 33);
+
+        // Speed Multiplier Badge (Every 30s)
+        ctx.fillStyle = 'rgba(254, 240, 138, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(138, 14, 115, 38, 19);
+        ctx.fill();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px Fredoka, sans-serif';
+        ctx.fillStyle = '#b45309';
+        ctx.textAlign = 'center';
+        ctx.fillText(`⚡ ${g.speedMultiplier.toFixed(1)}x Cepat`, 195, 33);
 
         // Survived time
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.beginPath();
-        ctx.roundRect(width - 110, 12, 98, 36, 18);
+        ctx.roundRect(width - 110, 14, 96, 38, 19);
         ctx.fill();
         ctx.strokeStyle = '#bae6fd';
         ctx.lineWidth = 1.5;
@@ -672,10 +698,10 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         const secs = g.currentSurvivalSec % 60;
         const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-        ctx.font = 'bold 14px Fredoka, sans-serif';
+        ctx.font = 'bold 13px Fredoka, sans-serif';
         ctx.fillStyle = '#0369a1';
         ctx.textAlign = 'center';
-        ctx.fillText(`⏱️ ${timeStr}`, width - 61, 30);
+        ctx.fillText(`⏱️ ${timeStr}`, width - 62, 33);
       }
 
       animFrameIdRef.current = requestAnimationFrame(render);
@@ -688,9 +714,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         cancelAnimationFrame(animFrameIdRef.current);
       }
     };
-  }, [gameState, selectedChar, handleGameOver]);
+  }, [activeGame, gameState, selectedChar, handleGameOver]);
 
-  // Format MM:SS helper
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
@@ -700,6 +725,281 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   const isUnderCooldown = cooldownUntil !== null && cooldownRemainingSeconds > 0;
   const quotaPercent = Math.max(0, Math.min(100, (quotaRemainingSeconds / MAX_PLAY_QUOTA_SECONDS) * 100));
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsFullscreenApple(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsFullscreenApple(false);
+    }
+  };
+
+  // IF SCHOOL 3D GAME IS ACTIVE
+  if (activeGame === 'school3d') {
+    return (
+      <SchoolItems3DGame
+        onClose={() => setActiveGame('menu')}
+        onEarnStar={onEarnStar}
+      />
+    );
+  }
+
+  // IF APPLE GAME IS ACTIVE (FULLSCREEN MODE)
+  if (activeGame === 'apple') {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between select-none overflow-hidden text-white font-sans">
+        {/* Fullscreen Top Navigation Bar */}
+        <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-red-500/20 border border-red-400 flex items-center justify-center text-lg">
+              🍎
+            </div>
+            <div>
+              <h1 className="font-fredoka font-bold text-sm sm:text-base leading-tight text-white flex items-center gap-1.5">
+                <span>Game Kumpulkan Apel</span>
+                <span className="text-[10px] bg-amber-500/20 text-yellow-300 font-sans px-1.5 py-0.5 rounded border border-amber-500/30">
+                  Layar Penuh
+                </span>
+              </h1>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Kecepatan game meningkat +0.5x setiap 30 detik!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Speed Multiplier Live Pill (Every 30 seconds) */}
+            <div className="bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 rounded-xl flex items-center gap-1 text-yellow-300 text-xs font-bold">
+              <Zap className="w-3.5 h-3.5" />
+              <span>{(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5).toFixed(1)}x</span>
+            </div>
+
+            {/* Quota Remaining */}
+            <div className="bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 rounded-xl flex items-center gap-1 text-emerald-300 text-xs font-bold hidden xs:flex">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{formatTime(quotaRemainingSeconds)}</span>
+            </div>
+
+            {/* Fullscreen native trigger */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+              title="Toggle Fullscreen"
+            >
+              {isFullscreenApple ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+
+            {/* Close / Return to Menu */}
+            <button
+              onClick={() => {
+                playSound('click');
+                setGameState('character_select');
+                setActiveGame('menu');
+              }}
+              className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 border border-rose-400/30 transition-colors"
+              title="Keluar ke Menu Istirahat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Speed Upgrade Floating Banner */}
+        {speedBoostNotification && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl shadow-2xl border-2 border-yellow-200 font-fredoka font-bold text-sm flex items-center gap-2 animate-bounce">
+            <Zap className="w-5 h-5 text-yellow-100" />
+            <span>{speedBoostNotification}</span>
+          </div>
+        )}
+
+        {/* Apple Game Canvas Center Viewport */}
+        <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gradient-to-b from-sky-950 via-slate-900 to-slate-950 p-2 overflow-hidden">
+          {/* 1. CHARACTER SELECTION FIRST (WAJIB PILIH KARAKTER DULU) */}
+          {gameState === 'character_select' && (
+            <div className="absolute inset-0 z-40 bg-gradient-to-b from-slate-900/95 via-sky-950/95 to-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-y-auto">
+              <div className="max-w-md w-full bg-slate-800/90 border border-white/20 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-center my-auto animate-in zoom-in-95">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+                    Pilih Karakter Dulu 🌟
+                  </span>
+                  <h2 className="font-fredoka font-bold text-2xl text-white mt-2">
+                    Kumpulkan Apel Ceria 🍎
+                  </h2>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Pilih karakter favoritmu untuk terbang mengumpulkan buah apel merah dan emas!
+                  </p>
+                </div>
+
+                {/* 4 Characters Cards */}
+                <div className="grid grid-cols-2 gap-2.5 text-left">
+                  {CHARACTERS.map((char) => {
+                    const isSelected = selectedChar === char.id;
+                    return (
+                      <button
+                        key={char.id}
+                        onClick={() => {
+                          setSelectedChar(char.id);
+                          playSound('pop');
+                        }}
+                        className={`p-3 rounded-2xl border-2 transition-all flex flex-col gap-1.5 text-left active:scale-95 ${
+                          isSelected
+                            ? 'bg-amber-500/20 border-amber-400 shadow-lg shadow-amber-500/20 scale-[1.02]'
+                            : 'bg-white/5 border-white/10 hover:bg-white/10 opacity-80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-3xl">{char.emoji}</span>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-amber-400" />}
+                        </div>
+                        <div>
+                          <div className="font-fredoka font-bold text-sm text-white">{char.name}</div>
+                          <div className="text-[10px] text-slate-300">{char.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Challenge Info Card */}
+                <div className="bg-slate-900/70 border border-amber-400/30 rounded-2xl p-3 text-left flex items-start gap-2.5 text-[11px] text-amber-200">
+                  <Zap className="w-4 h-4 text-yellow-300 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-yellow-300">Tantangan Kecepatan:</span>
+                    <p className="text-slate-300 mt-0.5 leading-snug">
+                      Setiap <strong>30 detik</strong>, laju permainan akan bertambah <strong>+0.5x</strong> lebih cepat. Siapkan refleksmu!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Start Button */}
+                <button
+                  onClick={startNewGame}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-white font-fredoka font-bold text-base rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-300"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  <span>Mulai Main (Layar Penuh)</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Canvas Box */}
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-emerald-400/60 max-w-[420px] w-full aspect-[9/11] flex items-center justify-center bg-slate-900 select-none">
+            <canvas
+              ref={canvasRef}
+              onClick={handleJump}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleJump();
+              }}
+              className="w-full h-full cursor-pointer touch-none block"
+            />
+
+            {/* GAME OVER OVERLAY */}
+            {gameState === 'gameover' && (
+              <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-white text-center gap-3 animate-in zoom-in-95">
+                <div className="w-16 h-16 rounded-3xl bg-rose-500/80 border-2 border-rose-300 flex items-center justify-center text-3xl shadow-lg">
+                  💥
+                </div>
+
+                <div>
+                  <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">
+                    Karakter Menyentuh Tanah
+                  </span>
+                  <h3 className="font-fredoka font-bold text-2xl drop-shadow-md mt-0.5">
+                    Permainan Selesai!
+                  </h3>
+                </div>
+
+                {/* Score Summary Box */}
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 w-full max-w-[280px] border border-white/20 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="flex items-center gap-1 text-slate-200">
+                      <Apple className="w-4 h-4 text-red-400" />
+                      <span>Buah Apel:</span>
+                    </span>
+                    <strong className="font-fredoka text-lg text-yellow-300">
+                      {applesCollected} Apel
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs px-1 border-t border-white/10 pt-1.5">
+                    <span className="flex items-center gap-1 text-slate-200">
+                      <Clock className="w-4 h-4 text-sky-400" />
+                      <span>Waktu Bertahan:</span>
+                    </span>
+                    <strong className="font-fredoka text-sm text-sky-200">
+                      {formatTime(sessionTimeSeconds)}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs px-1 border-t border-white/10 pt-1.5">
+                    <span className="flex items-center gap-1 text-slate-200">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span>Kecepatan Tertinggi:</span>
+                    </span>
+                    <strong className="font-fredoka text-sm text-amber-300">
+                      {(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5).toFixed(1)}x
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs px-1 border-t border-white/10 pt-1.5">
+                    <span className="flex items-center gap-1 text-slate-200">
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span>Rekor Terbaik:</span>
+                    </span>
+                    <strong className="font-fredoka text-sm text-amber-300">
+                      {highScore} Apel
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2 w-full max-w-[280px]">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={startNewGame}
+                      className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-fredoka font-bold text-sm rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-1.5 border border-emerald-300"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Main Lagi</span>
+                    </button>
+
+                    <button
+                      onClick={() => setGameState('character_select')}
+                      className="flex-1 py-2.5 bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 font-fredoka font-bold text-sm rounded-xl border border-amber-400/40 active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Ganti Tokoh</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      playSound('click');
+                      setGameState('character_select');
+                      setActiveGame('menu');
+                    }}
+                    className="w-full py-2 bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-semibold rounded-xl border border-white/10"
+                  >
+                    Kembali ke Menu Game
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Screen Tap Instruction */}
+        <div className="py-2 text-center text-xs text-slate-400 bg-slate-900/80 border-t border-white/10">
+          💡 Ketuk layar atau tekan tombol <strong>Spasi</strong> untuk melompat terbang.
+        </div>
+      </div>
+    );
+  }
+
+  // DEFAULT VIEW: MENU ISTIRAHAT
   return (
     <div className="flex flex-col gap-3.5 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-16 animate-in fade-in">
       {/* 1. Header Banner */}
@@ -710,10 +1010,10 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             <span>Waktu Istirahat Ceria</span>
           </div>
           <h2 className="text-xl font-fredoka font-bold mt-0.5 leading-tight">
-            Game Kumpulkan Apel 🍎
+            Pilih Game Istirahat 🎮
           </h2>
           <p className="text-xs text-white/90 mt-0.5 max-w-[280px]">
-            Terbang santai, kumpulkan buah apel, dan ingat batas waktu bermain!
+            Bermain seru sejenak untuk menyegarkan pikiran sebelum belajar lagi!
           </p>
         </div>
 
@@ -733,7 +1033,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             </button>
           )}
           <div className="text-4xl select-none opacity-90 pr-2">
-            {CHARACTERS.find((c) => c.id === selectedChar)?.emoji || '🐦'}
+            🎈
           </div>
         </div>
       </div>
@@ -776,7 +1076,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         </div>
       </div>
 
-      {/* 3. CONDITIONAL: IF COOLDOWN IS ACTIVE (Wajib Istirahat 10 Menit) */}
+      {/* 3. CONDITIONAL: IF COOLDOWN IS ACTIVE */}
       {isUnderCooldown ? (
         <div className="bg-white rounded-3xl p-6 shadow-md border-4 border-amber-400 flex flex-col items-center text-center gap-4 animate-in zoom-in-95">
           <div className="w-20 h-20 rounded-3xl bg-amber-100 flex items-center justify-center text-4xl shadow-inner border-2 border-amber-300">
@@ -787,7 +1087,6 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             <span className="text-xs font-bold text-amber-700 uppercase tracking-wider bg-amber-100 px-3 py-1 rounded-full mx-auto">
               Kuota 15 Menit Habis
             </span>
-            {/* Exact Required Note / Catatan */}
             <h3 className="font-fredoka font-bold text-lg sm:text-xl text-slate-800 mt-2 text-rose-600 leading-snug">
               &ldquo;Belajar lagi, Yuk. 10 menit lagi kamu bisa main lagi.&rdquo;
             </h3>
@@ -806,7 +1105,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             </span>
           </div>
 
-          {/* Quick Shortcuts to return to learning */}
+          {/* Quick Shortcuts */}
           <div className="w-full flex flex-col gap-2 mt-2">
             <span className="text-xs font-bold text-slate-600 text-left px-1">
               Pilih Pelajaran Seru Sekarang:
@@ -856,152 +1155,87 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         </div>
       ) : (
         <>
-          {/* 4. Character Selection Tabs (Burung, Dino, Kucing, Unicorn) */}
-          <div className="bg-white rounded-3xl p-3.5 shadow-sm border border-slate-100 flex flex-col gap-2">
+          {/* 4. GAME SELECTION CARDS */}
+          <div className="flex flex-col gap-3">
             <span className="text-xs font-bold text-slate-700 px-1">
-              Pilih Karaktermu:
+              Pilih Game Favoritmu (Otomatis Layar Penuh):
             </span>
-            <div className="grid grid-cols-4 gap-2">
-              {CHARACTERS.map((char) => (
-                <button
-                  key={char.id}
-                  disabled={gameState === 'playing'}
-                  onClick={() => {
-                    setSelectedChar(char.id);
-                    playSound('pop');
-                  }}
-                  className={`p-2 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
-                    selectedChar === char.id
-                      ? 'bg-amber-50 border-amber-500 shadow-sm scale-105'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 opacity-90'
-                  } ${gameState === 'playing' ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  <span className="text-2xl">{char.emoji}</span>
-                  <span className="text-[10px] font-fredoka font-bold text-slate-700 truncate w-full text-center">
-                    {char.name.split(' ')[0]}
+
+            {/* GAME 1: Game Apel (Pilih karakter dulu, lalu +0.5x kecepatan per 30 detik) */}
+            <div className="bg-white rounded-3xl p-4 shadow-sm border-2 border-emerald-200 hover:border-emerald-400 transition-all flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-400 flex items-center justify-center text-4xl shadow-md flex-shrink-0">
+                🍎
+              </div>
+
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    2D Refleks & Apel
                   </span>
-                </button>
-              ))}
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    <span>+0.5x Tiap 30 Detik</span>
+                  </span>
+                </div>
+                <h3 className="font-fredoka font-bold text-lg text-slate-800 mt-1">
+                  Game Kumpulkan Apel
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Pilih karakter terlebih dahulu, lalu terbang kumpulkan apel. Setiap 30 detik kecepatan bertambah +0.5x agar semakin seru dan menantang!
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  playSound('click');
+                  setActiveGame('apple');
+                  setGameState('character_select');
+                }}
+                className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-white font-fredoka font-bold text-sm rounded-2xl shadow-md active:scale-95 flex items-center justify-center gap-2 border border-emerald-300"
+              >
+                <Maximize2 className="w-4 h-4" />
+                <span>Main (Fullscreen)</span>
+              </button>
+            </div>
+
+            {/* GAME 2: Kumpulkan barang sekolah (3D Open World) */}
+            <div className="bg-white rounded-3xl p-4 shadow-sm border-2 border-sky-200 hover:border-sky-400 transition-all flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-500 flex items-center justify-center text-4xl shadow-md flex-shrink-0">
+                🎒
+              </div>
+
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
+                    3D Open World
+                  </span>
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-indigo-500" />
+                    <span>Misi 60 Detik</span>
+                  </span>
+                </div>
+                <h3 className="font-fredoka font-bold text-lg text-slate-800 mt-1">
+                  Kumpulkan barang sekolah
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Karakter & barang 3D realistis, kamera overhead sudut atas, dilengkapi Peta Radar sudut kiri atas untuk memantau posisi dan lokasi Meja Guru.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  playSound('click');
+                  setActiveGame('school3d');
+                }}
+                className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 text-white font-fredoka font-bold text-sm rounded-2xl shadow-md active:scale-95 flex items-center justify-center gap-2 border border-sky-300"
+              >
+                <Maximize2 className="w-4 h-4" />
+                <span>Main (Fullscreen 3D)</span>
+              </button>
             </div>
           </div>
 
-          {/* 5. The Canvas Game Screen */}
-          <div className="relative bg-slate-900 rounded-3xl overflow-hidden shadow-lg border-4 border-emerald-300 mx-auto w-full max-w-[360px] sm:max-w-[420px] md:max-w-[460px] aspect-[9/11] flex items-center justify-center select-none">
-            <canvas
-              ref={canvasRef}
-              onClick={handleJump}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                handleJump();
-              }}
-              className="w-full h-full cursor-pointer touch-none block"
-            />
-
-            {/* Overlays on Canvas */}
-            {/* IDLE / START OVERLAY */}
-            {gameState === 'idle' && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-white text-center gap-3">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl animate-bounce">
-                  {CHARACTERS.find((c) => c.id === selectedChar)?.emoji || '🐦'}
-                </div>
-
-                <div>
-                  <h3 className="font-fredoka font-bold text-xl drop-shadow-md">
-                    Kumpulkan Apel Sebanyaknya!
-                  </h3>
-                  <p className="text-xs text-amber-100 mt-1 max-w-[250px]">
-                    Ketuk layar agar karakter terbang melayang dan tangkap semua buah apel. Jaga agar tidak jatuh ke tanah!
-                  </p>
-                </div>
-
-                <button
-                  id="btn-start-flappy"
-                  onClick={startNewGame}
-                  className="py-3 px-8 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-fredoka font-bold text-base rounded-2xl shadow-lg active:scale-95 flex items-center gap-2 border-2 border-emerald-300"
-                >
-                  <Play className="w-5 h-5 fill-white" />
-                  <span>Mulai Main</span>
-                </button>
-              </div>
-            )}
-
-            {/* GAME OVER / GAGAL OVERLAY */}
-            {gameState === 'gameover' && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-white text-center gap-3 animate-in zoom-in-95">
-                <div className="w-16 h-16 rounded-3xl bg-rose-500/80 border-2 border-rose-300 flex items-center justify-center text-3xl shadow-lg">
-                  💥
-                </div>
-
-                <div>
-                  <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">
-                    Karakter Jatuh ke Tanah
-                  </span>
-                  <h3 className="font-fredoka font-bold text-2xl drop-shadow-md mt-0.5">
-                    Permainan Selesai!
-                  </h3>
-                </div>
-
-                {/* Score Summary Box */}
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 w-full max-w-[260px] border border-white/20 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs px-1">
-                    <span className="flex items-center gap-1 text-slate-200">
-                      <Apple className="w-4 h-4 text-red-400" />
-                      <span>Buah Apel:</span>
-                    </span>
-                    <strong className="font-fredoka text-lg text-yellow-300">
-                      {applesCollected} Apel
-                    </strong>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs px-1 border-t border-white/10 pt-1.5">
-                    <span className="flex items-center gap-1 text-slate-200">
-                      <Clock className="w-4 h-4 text-sky-400" />
-                      <span>Waktu Bertahan:</span>
-                    </span>
-                    <strong className="font-fredoka text-sm text-sky-200">
-                      {formatTime(sessionTimeSeconds)}
-                    </strong>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs px-1 border-t border-white/10 pt-1.5">
-                    <span className="flex items-center gap-1 text-slate-200">
-                      <Trophy className="w-4 h-4 text-amber-400" />
-                      <span>Rekor Tertinggi:</span>
-                    </span>
-                    <strong className="font-fredoka text-sm text-amber-300">
-                      {highScore} Apel
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex items-center gap-2.5 w-full max-w-[260px]">
-                  <button
-                    id="btn-play-again"
-                    onClick={startNewGame}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 text-white font-fredoka font-bold text-sm rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-1.5 border border-emerald-300"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Main Lagi</span>
-                  </button>
-
-                  <button
-                    id="btn-back-learning"
-                    onClick={() => {
-                      if (onExit) onExit();
-                      else onNavigateTab('home');
-                    }}
-                    className="flex-1 py-2.5 bg-white/20 hover:bg-white/30 text-white font-fredoka font-bold text-sm rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-1.5 border border-white/30"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>Belajar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 6. Friendly Tips for Parents & Kids */}
+          {/* 5. Friendly Tips */}
           <div className="bg-amber-50 rounded-2xl p-3 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
             <Coffee className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
