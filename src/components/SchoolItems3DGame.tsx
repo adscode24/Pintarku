@@ -1684,7 +1684,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                 <span className="font-fredoka font-bold text-base text-yellow-300">
                   {score}
                 </span>
-                <span className="text-[10px] text-yellow-100 hidden xs:inline">Poin</span>
+                <span className="text-[10px] text-yellow-100 hidden sm:inline">Poin</span>
               </div>
 
               {/* Timer 60s */}
@@ -1815,31 +1815,31 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         {/* IN-GAME HUD OVERLAYS */}
         {gameStage === 'playing' && (
           <>
-            {/* TOP-LEFT: RADAR MINI-MAP ONLY (TOMBOL TAS DI BAWAH MAP SUDAH DIHILANGKAN) */}
-            <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
-              <div className="bg-slate-900/85 backdrop-blur-md border border-emerald-400/50 rounded-2xl p-2 shadow-2xl flex flex-col items-center">
-                <div className="flex items-center justify-between w-full px-0.5 mb-1 text-[10px]">
-                  <span className="font-bold text-emerald-300 flex items-center gap-1 uppercase tracking-wider">
-                    <Compass className="w-3 h-3 text-emerald-400" />
-                    <span>Peta Radar</span>
+            {/* TOP-LEFT: RADAR MINI-MAP — compact for all orientations */}
+            <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 pointer-events-auto">
+              <div className="bg-slate-900/85 backdrop-blur-md border border-emerald-400/50 rounded-xl p-1.5 shadow-2xl flex flex-col items-center">
+                <div className="flex items-center justify-between w-full px-0.5 mb-0.5 text-[9px]">
+                  <span className="font-bold text-emerald-300 flex items-center gap-0.5 uppercase tracking-wider">
+                    <Compass className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>Radar</span>
                   </span>
-                  <span className="text-[9px] bg-amber-400/20 text-amber-300 px-1 rounded border border-amber-400/30">
-                    U (Utara)
+                  <span className="text-[8px] bg-amber-400/20 text-amber-300 px-1 rounded border border-amber-400/30">
+                    U
                   </span>
                 </div>
 
-                <div className="relative rounded-xl overflow-hidden border border-white/20 shadow-inner bg-slate-950">
+                <div className="relative rounded-lg overflow-hidden border border-white/20 shadow-inner bg-slate-950">
                   <canvas
                     ref={minimapCanvasRef}
                     width={130}
                     height={130}
-                    className="w-[120px] h-[120px] sm:w-[130px] sm:h-[130px] block"
+                    className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] block"
                   />
                 </div>
 
-                <div className="mt-1.5 w-full bg-slate-800/90 rounded-lg px-2 py-0.5 border border-white/10 flex items-center justify-between text-[10px]">
+                <div className="mt-1 w-full bg-slate-800/90 rounded px-1.5 py-0.5 border border-white/10 flex items-center justify-between text-[9px]">
                   <span className="text-amber-300 font-bold flex items-center gap-0.5">
-                    <span>🚩 Meja Guru:</span>
+                    <span>🚩 Meja:</span>
                   </span>
                   <span className="font-fredoka font-bold text-white">
                     {distanceToDesk}m
@@ -1848,65 +1848,65 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
               </div>
             </div>
 
-            {/* Floating Toast Notification */}
+            {/* Floating Toast + Zone Notification — single slot top-center */}
             {toastMessage && (
               <div
-                className={`absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-2xl border font-bold text-xs shadow-xl backdrop-blur-md animate-in slide-in-from-top duration-200 flex items-center gap-2 max-w-[90%] text-center ${
+                className={`absolute top-2 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-xl border font-bold text-[11px] shadow-xl backdrop-blur-md animate-in slide-in-from-top duration-200 flex items-center gap-1.5 max-w-[80%] text-center ${
                   toastMessage.isError
                     ? 'bg-rose-600/90 text-white border-rose-300'
                     : 'bg-emerald-600/90 text-white border-emerald-300'
                 }`}
               >
                 {toastMessage.isError ? (
-                  <AlertTriangle className="w-4 h-4 text-yellow-300 flex-shrink-0" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0" />
                 ) : (
-                  <Sparkles className="w-4 h-4 text-yellow-300 flex-shrink-0" />
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-300 flex-shrink-0" />
                 )}
                 <span>{toastMessage.text}</span>
               </div>
             )}
 
-            {/* IN-ZONE NOTIFICATION (When standing near Teacher's Desk) */}
+            {/* IN-ZONE NOTIFICATION — below toast */}
             {isInsideCollectionZone() && (
-              <div className="absolute top-20 left-1/2 -translate-x-1/2 z-25 bg-amber-500/90 backdrop-blur-md text-slate-950 font-fredoka font-bold text-xs px-4 py-1.5 rounded-full border-2 border-white shadow-xl animate-pulse flex items-center gap-1.5">
-                <span>🚩 Area Meja Guru! Menyetor perlengkapan...</span>
+              <div className="absolute top-10 left-1/2 -translate-x-1/2 z-25 bg-amber-500/90 backdrop-blur-md text-slate-950 font-fredoka font-bold text-[10px] px-3 py-1 rounded-full border-2 border-white shadow-xl animate-pulse flex items-center gap-1">
+                <span>🚩 Area Meja Guru!</span>
               </div>
             )}
 
-            {/* ON-SCREEN VIRTUAL JOYSTICK (Arah Jalan) */}
-            <div className="absolute bottom-6 left-6 z-20 flex flex-col items-center gap-1">
+            {/* ON-SCREEN VIRTUAL JOYSTICK (Arah Jalan) — compact for landscape */}
+            <div className="absolute bottom-4 left-4 z-20 flex flex-col items-center gap-0.5">
               <div
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-900/60 backdrop-blur-md border-2 border-white/30 flex items-center justify-center relative touch-none shadow-xl active:border-emerald-400"
+                className="w-20 h-20 rounded-full bg-slate-900/60 backdrop-blur-md border-2 border-white/30 flex items-center justify-center relative touch-none shadow-xl active:border-emerald-400"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                <div className="w-1 h-1 rounded-full bg-white/40" />
 
                 <div
-                  className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 border-2 border-white shadow-md flex items-center justify-center text-xs text-white absolute pointer-events-none transition-transform duration-75"
+                  className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 border-2 border-white shadow-md flex items-center justify-center text-[10px] text-white absolute pointer-events-none transition-transform duration-75"
                   style={{
-                    transform: `translate(${joystickRef.current.x * 35}px, ${joystickRef.current.y * 35}px)`,
+                    transform: `translate(${joystickRef.current.x * 25}px, ${joystickRef.current.y * 25}px)`,
                   }}
                 >
                   🕹️
                 </div>
               </div>
-              <span className="text-[10px] text-slate-300 font-bold bg-slate-900/70 px-2 py-0.5 rounded-md border border-white/10">
-                Arah Jalan
+              <span className="text-[9px] text-slate-300 font-bold bg-slate-900/70 px-1.5 py-0.5 rounded border border-white/10">
+                Jalan
               </span>
             </div>
 
-            {/* ACTION BUTTONS: TOMBOL LOMPAT & TOMBOL TAS */}
-            <div className="absolute bottom-6 right-6 z-20 flex items-end gap-3 pointer-events-auto">
+            {/* ACTION BUTTONS: TOMBOL LOMPAT & TOMBOL TAS — compact */}
+            <div className="absolute bottom-4 right-4 z-20 flex items-end gap-2 pointer-events-auto">
               {/* TOMBOL LOMPAT */}
               <button
                 onClick={handleJump}
-                className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 border-2 border-amber-200 text-white flex flex-col items-center justify-center gap-0.5 shadow-xl shadow-amber-500/40 active:scale-90 transition-transform"
+                className="w-14 h-14 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 border-2 border-amber-200 text-white flex flex-col items-center justify-center gap-0.5 shadow-xl shadow-amber-500/40 active:scale-90 transition-transform"
                 title="Lompat (Spasi)"
               >
-                <span className="text-2xl leading-none">🦘</span>
-                <span className="text-[10px] font-fredoka font-bold tracking-wider">
+                <span className="text-xl leading-none">🦘</span>
+                <span className="text-[9px] font-fredoka font-bold tracking-wider">
                   LOMPAT
                 </span>
               </button>
@@ -1917,17 +1917,17 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                   playSound('pop');
                   setIsBagOpen((prev) => !prev);
                 }}
-                className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 hover:from-sky-400 hover:to-purple-500 border-3 border-sky-300 text-white flex flex-col items-center justify-center gap-1 shadow-2xl shadow-indigo-500/50 active:scale-90 transition-transform relative"
+                className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 hover:from-sky-400 hover:to-purple-500 border-2 border-sky-300 text-white flex flex-col items-center justify-center gap-0.5 shadow-2xl shadow-indigo-500/50 active:scale-90 transition-transform relative"
                 title="Buka Isi Tas Ransel"
               >
-                <Backpack className="w-8 h-8 text-yellow-300" />
-                <span className="text-xs font-fredoka font-bold leading-tight">
+                <Backpack className="w-6 h-6 text-yellow-300" />
+                <span className="text-[10px] font-fredoka font-bold leading-tight">
                   TAS
                 </span>
 
                 {/* Badge count of items */}
                 <span
-                  className={`absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center border-2 border-white shadow-md transition-colors ${
+                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full font-bold text-[10px] flex items-center justify-center border-2 border-white shadow-md transition-colors ${
                     heldItems.length > 0 ? 'bg-amber-400 text-slate-900 animate-bounce' : 'bg-slate-700 text-slate-300'
                   }`}
                 >

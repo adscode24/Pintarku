@@ -34,21 +34,8 @@ import {
   Gamepad2,
   LogOut,
   Coins,
-  X,
-  RotateCw
+  X
 } from 'lucide-react';
-
-function useIsLandscape() {
-  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
-  useEffect(() => {
-    const onResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  return isLandscape;
-}
-
-const GAME_TABS: TabType[] = ['istirahat'];
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -71,32 +58,6 @@ export default function App() {
   const [showBadgesModal, setShowBadgesModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [newBadgeEarned, setNewBadgeEarned] = useState<Badge | null>(null);
-  const isLandscape = useIsLandscape();
-  const isGameTab = GAME_TABS.includes(activeTab);
-
-  // Auto-rotate to landscape for game tabs (best-effort; works in Capacitor APK)
-  useEffect(() => {
-    if (!isGameTab) return;
-    const tryLock = async () => {
-      try {
-        const orientation = (screen as any).orientation;
-        if (orientation && typeof orientation.lock === 'function') {
-          await orientation.lock('landscape');
-        }
-      } catch {
-        /* browser/PWA: orientation lock not supported, show rotate hint instead */
-      }
-    };
-    tryLock();
-    return () => {
-      try {
-        const orientation = (screen as any).orientation;
-        if (orientation && typeof orientation.unlock === 'function') {
-          orientation.unlock();
-        }
-      } catch {}
-    };
-  }, [isGameTab]);
 
   // Save profile changes locally to the user's phone storage
   useEffect(() => {
@@ -697,27 +658,6 @@ export default function App() {
             </button>
           </nav>
         </div>
-
-      {/* Rotate to landscape hint for games in portrait (browser/PWA fallback) */}
-      {isGameTab && !isLandscape && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center animate-bounce">
-            <RotateCw className="w-10 h-10 text-white" />
-          </div>
-          <h3 className="font-fredoka font-bold text-xl text-white">
-            Putar HP ke Landscape
-          </h3>
-          <p className="text-sm text-slate-300 max-w-xs">
-            Game ini lebih seru dan rapi dimainkan dalam mode landscape (miring).
-          </p>
-          <button
-            onClick={() => changeTab('home')}
-            className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-fredoka font-bold text-sm rounded-2xl border border-white/20 min-h-[44px]"
-          >
-            Kembali ke Beranda
-          </button>
-        </div>
-      )}
 
       {/* Fullscreen Istirahat Mode */}
       {activeTab === 'istirahat' && (
