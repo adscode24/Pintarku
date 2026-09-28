@@ -9,7 +9,7 @@ import BadgesModal from './components/BadgesModal';
 import ProfileModal from './components/ProfileModal';
 import AuthScreen from './components/AuthScreen';
 import { checkNewBadges } from './data/badgesData';
-import { playSound, isSoundEnabled, setSoundEnabled, speakIndonesian } from './utils/audio';
+import { playSound, isSoundEnabled, setSoundEnabled, speakIndonesian, stopSpeaking, getAudioContext } from './utils/audio';
 import { 
   getActiveUserId, 
   getLocalProfile, 
@@ -154,6 +154,24 @@ export default function App() {
       }
     } catch {}
 
+    // Unlock audio context on first user interaction (Android WebView requirement)
+    const unlockAudio = () => {
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+      } catch {}
+      // Also warm up native TTS on Android
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor-community/text-to-speech').then(({ TextToSpeech }) => {
+          TextToSpeech.speak({ text: '', lang: 'id-ID', rate: 1 }).catch(() => {});
+        }).catch(() => {});
+      }
+      document.removeEventListener('pointerdown', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+    document.addEventListener('pointerdown', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+
     const handlePopState = () => {
       if (showBadgesModal) {
         setShowBadgesModal(false);
@@ -250,6 +268,7 @@ export default function App() {
 
   const changeTab = (tab: TabType) => {
     playSound('click');
+    stopSpeaking();
     setActiveTab(tab);
     try {
       window.history.pushState({ tab }, '', '');

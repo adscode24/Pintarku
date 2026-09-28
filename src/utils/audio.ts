@@ -1,11 +1,17 @@
 /**
  * Audio Synthesizer and Indonesian Female Speech Engine
+ * Uses native Android TTS via Capacitor plugin (reliable on APK),
+ * falls back to Web Speech API on browser/PWA.
  */
+
+import { Capacitor } from '@capacitor/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 
 let audioCtx: AudioContext | null = null;
 let soundEnabled = true;
+let voicesCache: SpeechSynthesisVoice[] = [];
 
-function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     audioCtx = new AudioContextClass();
@@ -46,7 +52,6 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
       osc.start(now);
       osc.stop(now + 0.1);
     } else if (type === 'apple') {
-      // Pleasant crunch/pickup chime
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
@@ -71,7 +76,6 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
       osc.start(now);
       osc.stop(now + 0.08);
     } else if (type === 'correct') {
-      // Cheerful chime: C5, E5, G5, C6
       const notes = [523.25, 659.25, 783.99, 1046.5];
       notes.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
@@ -86,7 +90,6 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
         osc.stop(now + idx * 0.08 + 0.25);
       });
     } else if (type === 'wrong') {
-      // Gentle boing (low frequency)
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sawtooth';
@@ -99,7 +102,6 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
       osc.start(now);
       osc.stop(now + 0.25);
     } else if (type === 'star') {
-      // Magic sparkle
       const freqs = [659.25, 880, 1174.66, 1318.51];
       freqs.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
@@ -114,7 +116,6 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
         osc.stop(now + idx * 0.06 + 0.3);
       });
     } else if (type === 'victory' || type === 'badge') {
-      // Fanfare: C5, G5, C6, E6, G6
       const fanfare = [
         { f: 523.25, t: 0, d: 0.15 },
         { f: 659.25, t: 0.12, d: 0.15 },
@@ -140,9 +141,42 @@ export function playSound(type: 'click' | 'correct' | 'wrong' | 'star' | 'victor
 }
 
 /**
- * Text-to-Speech specifically tuned for Indonesian Female voice ("Suara Perempuan")
+ * Cache voices when they become available (Android Chrome loads async)
  */
-export function speakIndonesian(text: string, rate = 0.85): Promise<void> {
+function refreshVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const v = window.speechSynthesis.getVoices();
+  if (v.length > 0) voicesCache = v;
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = () => refreshVoices();
+}
+
+/**
+ * Text-to-Speech specifically tuned for Indonesian Female voice ("Suara Perempuan")
+ * Priority: Native Android TTS (Capacitor) → Web Speech API fallback
+ */
+export async function speakIndonesian(text: string, rate = 0.85): Promise<void> {
+  // 1) Native Android TTS — always available on APK, no voice download needed
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await TextToSpeech.stop();
+      await TextToSpeech.speak({
+        text,
+        lang: 'id-ID',
+        rate,
+        pitch: 1.1,
+        category: 'ambient',
+      });
+      return;
+    } catch (err) {
+      console.warn('Native TTS failed, falling back to Web Speech:', err);
+    }
+  }
+
+  // 2) Web Speech API fallback (browser / PWA)
   return new Promise((resolve) => {
     if (!('speechSynthesis' in window)) {
       console.warn('Speech synthesis not supported');
@@ -150,21 +184,19 @@ export function speakIndonesian(text: string, rate = 0.85): Promise<void> {
       return;
     }
 
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'id-ID';
-    // Slightly higher pitch gives a cheerful, warm Indonesian female teacher voice
     utterance.pitch = 1.35;
-    utterance.rate = rate; // slightly slower for clear comprehension for kids
+    utterance.rate = rate;
 
-    // Try finding an Indonesian female voice or general female voice
-    const voices = window.speechSynthesis.getVoices();
+    // Use cached voices (Android Chrome returns empty on first getVoices call)
+    const voices = voicesCache.length > 0 ? voicesCache : window.speechSynthesis.getVoices();
     const idVoices = voices.filter(v => v.lang.startsWith('id') || v.lang.includes('ID'));
-    const femaleIdVoice = idVoices.find(v => 
-      v.name.toLowerCase().includes('female') || 
-      v.name.toLowerCase().includes('perempuan') || 
+    const femaleIdVoice = idVoices.find(v =>
+      v.name.toLowerCase().includes('female') ||
+      v.name.toLowerCase().includes('perempuan') ||
       v.name.toLowerCase().includes('gadis') ||
       v.name.toLowerCase().includes('siti') ||
       v.name.toLowerCase().includes('indonesia')
@@ -175,10 +207,9 @@ export function speakIndonesian(text: string, rate = 0.85): Promise<void> {
     } else if (idVoices.length > 0) {
       utterance.voice = idVoices[0];
     } else {
-      // Fallback: any voice with Indonesian tag or default with female pitch
-      const fallbackFemale = voices.find(v => 
-        v.name.toLowerCase().includes('female') || 
-        v.name.toLowerCase().includes('zira') || 
+      const fallbackFemale = voices.find(v =>
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('zira') ||
         v.name.toLowerCase().includes('samantha') ||
         v.name.toLowerCase().includes('yuna')
       );
@@ -187,16 +218,31 @@ export function speakIndonesian(text: string, rate = 0.85): Promise<void> {
       }
     }
 
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
+    let resolved = false;
+    const done = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve();
+      }
+    };
+
+    utterance.onend = done;
+    utterance.onerror = done;
+    // Safety timeout — some Android WebViews never fire onend
+    setTimeout(done, Math.max(4000, text.length * 120));
 
     window.speechSynthesis.speak(utterance);
   });
 }
 
-// Pre-load voices on startup
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    // voices cached
-  };
+/**
+ * Stop all speech (native + web)
+ */
+export async function stopSpeaking(): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    try { await TextToSpeech.stop(); } catch {}
+  }
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
 }
