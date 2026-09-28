@@ -167,16 +167,16 @@ export default function QuizModule({ userProfile, onCompleteLevel, onUpdateDiffi
     return (
       <div id="active-quiz-view" className="flex flex-col gap-4 max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto pb-24">
         {/* Top bar with back button, level title & progress */}
-        <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-between gap-2">
           <button
             id="btn-quit-quiz"
             onClick={() => { setSelectedLevelNum(null); playSound('click'); }}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl active:scale-95"
+            className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl active:scale-95 flex items-center justify-center"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-fredoka font-bold text-slate-800 text-sm">
                 Level {currentLevelData.levelNumber}

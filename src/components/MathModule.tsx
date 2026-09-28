@@ -153,29 +153,29 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
         <button
           id="diff-easy"
           onClick={() => { setDifficulty('easy'); loadNewProblem(opType, 'easy'); }}
-          className={`flex-1 py-1.5 rounded-xl font-bold transition-all ${
+          className={`flex-1 py-2 rounded-xl font-bold transition-all ${
             difficulty === 'easy' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-600'
           }`}
         >
-          🌱 Tingkat 1 (1 - 10)
+          🌱 Tingkat 1
         </button>
         <button
           id="diff-medium"
           onClick={() => { setDifficulty('medium'); loadNewProblem(opType, 'medium'); }}
-          className={`flex-1 py-1.5 rounded-xl font-bold transition-all ${
+          className={`flex-1 py-2 rounded-xl font-bold transition-all ${
             difficulty === 'medium' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600'
           }`}
         >
-          🌿 Tingkat 2 (10 - 30)
+          🌿 Tingkat 2
         </button>
         <button
           id="diff-hard"
           onClick={() => { setDifficulty('hard'); loadNewProblem(opType, 'hard'); }}
-          className={`flex-1 py-1.5 rounded-xl font-bold transition-all ${
+          className={`flex-1 py-2 rounded-xl font-bold transition-all ${
             difficulty === 'hard' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600'
           }`}
         >
-          🌳 Tingkat 3 (Puluhan Susun)
+          🌳 Tingkat 3
         </button>
       </div>
 
@@ -238,7 +238,7 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
                 {opType === 'addition' ? (
                   <div className="flex items-center justify-center gap-3 flex-wrap">
                     {/* Group 1 */}
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-blue-50 rounded-xl border border-blue-200 max-w-[150px] justify-center">
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-blue-50 rounded-xl border border-blue-200 max-w-full sm:max-w-[150px] justify-center">
                       {Array.from({ length: currentProblem.num1 }).map((_, idx) => (
                         <button
                           key={`g1_${idx}`}
@@ -256,7 +256,7 @@ export default function MathModule({ onEarnStar, onRecordMath }: MathModuleProps
                     <span className="text-2xl font-bold text-slate-400">+</span>
 
                     {/* Group 2 */}
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-purple-50 rounded-xl border border-purple-200 max-w-[150px] justify-center">
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-purple-50 rounded-xl border border-purple-200 max-w-full sm:max-w-[150px] justify-center">
                       {Array.from({ length: currentProblem.num2 }).map((_, idx) => (
                         <button
                           key={`g2_${idx}`}

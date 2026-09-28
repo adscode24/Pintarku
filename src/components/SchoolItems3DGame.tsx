@@ -1657,7 +1657,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   return (
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between select-none overflow-hidden text-white font-sans">
       {/* 1. TOP STATUS BAR / HEADER */}
-      <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between">
+      <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between safe-top">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-lg shadow-sm">
             🎒

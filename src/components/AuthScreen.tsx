@@ -234,7 +234,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
                 <button
                   onClick={(e) => handleDeleteUser(u.id, u.name, e)}
                   title="Hapus profil"
-                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-all"
+                  className="sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-rose-500 p-2 rounded-lg hover:bg-rose-50 transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -289,7 +289,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
       {/* MODAL 1: ADD NEW CHILD PROFILE */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border-4 border-indigo-200 flex flex-col gap-4 animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border-4 border-indigo-200 flex flex-col gap-4 animate-scale-up max-h-[92dvh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="font-fredoka font-bold text-slate-800 text-lg">
                 Tambah Profil Anak Baru

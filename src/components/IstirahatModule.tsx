@@ -750,7 +750,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     return (
       <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between select-none overflow-hidden text-white font-sans">
         {/* Fullscreen Top Navigation Bar */}
-        <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between">
+        <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between safe-top">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-red-500/20 border border-red-400 flex items-center justify-center text-lg">
               🍎
@@ -776,7 +776,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             </div>
 
             {/* Quota Remaining */}
-            <div className="bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 rounded-xl flex items-center gap-1 text-emerald-300 text-xs font-bold hidden xs:flex">
+            <div className="bg-emerald-500/20 border border-emerald-400/40 px-2.5 py-1 rounded-xl flex items-center gap-1 text-emerald-300 text-xs font-bold hidden sm:flex">
               <Clock className="w-3.5 h-3.5" />
               <span>{formatTime(quotaRemainingSeconds)}</span>
             </div>
@@ -885,7 +885,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           )}
 
           {/* Canvas Box */}
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-emerald-400/60 max-w-[420px] w-full aspect-[9/11] flex items-center justify-center bg-slate-900 select-none">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-emerald-400/60 max-w-[420px] w-full aspect-[7/9] flex items-center justify-center bg-slate-900 select-none">
             <canvas
               ref={canvasRef}
               onClick={handleJump}

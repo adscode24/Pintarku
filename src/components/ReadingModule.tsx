@@ -89,7 +89,7 @@ export default function ReadingModule({ onEarnStar, onRecordReading }: ReadingMo
       </div>
 
       {/* Voice Speed Toggle Banner */}
-      <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-2.5 flex items-center justify-between text-xs">
+      <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 text-rose-900 font-semibold">
           <Volume2 className="w-4 h-4 text-rose-600" />
           <span>Contoh Suara Guru Perempuan:</span>
@@ -203,7 +203,7 @@ export default function ReadingModule({ onEarnStar, onRecordReading }: ReadingMo
                   </button>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {set.items.map((syl) => (
                     <button
                       key={syl}

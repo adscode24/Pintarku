@@ -509,7 +509,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
               title="Dengarkan Suara Ibu Guru"
             >
               <Volume2 className="w-4 h-4" />
-              <span className="hidden xs:inline">Suara Ibu Guru</span>
+              <span className="hidden sm:inline">Suara Ibu Guru</span>
             </button>
 
             <button
@@ -706,7 +706,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
                   setIsEraser(false);
                   playSound('pop');
                 }}
-                className={`w-7 h-7 rounded-full transition-transform active:scale-90 ${
+                className={`w-9 h-9 rounded-full transition-transform active:scale-90 ${
                   !isEraser && selectedColor === c.hex
                     ? 'ring-3 ring-amber-400 scale-110 shadow-sm'
                     : 'opacity-85 hover:opacity-100'
@@ -743,7 +743,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
             <button
               id="tool-pen"
               onClick={() => { setIsEraser(false); playSound('click'); }}
-              className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+              className={`p-2.5 min-h-[44px] rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
                 !isEraser ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
               }`}
             >
@@ -754,7 +754,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
             <button
               id="tool-eraser"
               onClick={() => { setIsEraser(true); playSound('click'); }}
-              className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+              className={`p-2.5 min-h-[44px] rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
                 isEraser ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
               }`}
               title="Hapus coretan tanpa menghilangkan garis buku"
@@ -766,7 +766,7 @@ export default function WritingModule({ onEarnStar, onRecordWriting }: WritingMo
             <button
               id="tool-clear"
               onClick={() => { clearCanvas(); playSound('click'); }}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95"
+              className="p-2.5 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95"
               title="Bersihkan Semua Coretan"
             >
               <RotateCcw className="w-3.5 h-3.5" />

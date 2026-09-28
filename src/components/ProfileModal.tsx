@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DifficultyLevel, UserProfile } from '../types';
 import { playSound } from '../utils/audio';
-import { X, User, Award, Star, BookOpen, Check, LogOut, SlidersHorizontal, Lock } from 'lucide-react';
+import { X, User, Award, Star, BookOpen, Check, LogOut, SlidersHorizontal, Lock, ShieldCheck } from 'lucide-react';
 
 interface ProfileModalProps {
   userProfile: UserProfile;
@@ -28,6 +28,7 @@ export default function ProfileModal({ userProfile, onUpdateProfile, onSwitchAcc
   const [difficulty, setDifficulty] = useState<DifficultyLevel>(userProfile.difficulty || 'mudah');
   const [pin, setPin] = useState<string>(userProfile.pin || '');
   const [enablePin, setEnablePin] = useState<boolean>(Boolean(userProfile.pin && userProfile.pin.length >= 4));
+  const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
 
   const handleSave = () => {
     playSound('pop');
@@ -77,6 +78,32 @@ export default function ProfileModal({ userProfile, onUpdateProfile, onSwitchAcc
 
         {/* Content */}
         <div className="p-5 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+          {showPrivacy ? (
+            <div className="flex flex-col gap-3 text-sm text-slate-700">
+              <h4 className="font-fredoka font-bold text-base text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                Kebijakan Privasi
+              </h4>
+              <p className="leading-relaxed text-[13px]">
+                Semua data anak (nama, avatar, usia, skor, bintang, PIN) tersimpan
+                <strong> hanya di HP ini</strong> dan tidak pernah dikirim ke internet.
+              </p>
+              <ul className="list-disc pl-5 flex flex-col gap-1.5 text-[13px] leading-relaxed">
+                <li>Tanpa akun online, tanpa iklan, tanpa pelacak.</li>
+                <li>Tanpa akses lokasi, kamera, mikrofon, atau kontak.</li>
+                <li>PIN hanya mengunci profil di HP ini, bukan pengaman server.</li>
+                <li>Hapus profil / hapus-instal aplikasi = seluruh data ikut terhapus.</li>
+              </ul>
+              <button
+                type="button"
+                onClick={() => { setShowPrivacy(false); playSound('click'); }}
+                className="mt-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-fredoka font-bold text-sm rounded-xl active:scale-95 min-h-[44px]"
+              >
+                Kembali ke Profil
+              </button>
+            </div>
+          ) : (
+          <>
           {/* Avatar Grid */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-700">
@@ -226,19 +253,29 @@ export default function ProfileModal({ userProfile, onUpdateProfile, onSwitchAcc
             </button>
             <span className="text-[11px] text-slate-400">Data tersimpan di HP</span>
           </div>
+          </>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+        <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
           <button
-            onClick={() => { onClose(); playSound('click'); }}
-            className="py-2 px-4 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-200"
+            onClick={() => { setShowPrivacy(true); playSound('click'); }}
+            className="py-2 px-3 rounded-xl font-bold text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 flex items-center gap-1.5 min-h-[44px]"
           >
-            Batal
+            <ShieldCheck className="w-4 h-4" />
+            <span>Kebijakan Privasi</span>
           </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onClose(); playSound('click'); }}
+              className="py-2 px-4 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-200 min-h-[44px]"
+            >
+              Batal
+            </button>
           <button
             onClick={handleSave}
-            className="py-2 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-fredoka font-bold text-sm rounded-xl shadow-sm active:scale-95 flex items-center gap-1.5"
+            className="py-2 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-fredoka font-bold text-sm rounded-xl shadow-sm active:scale-95 flex items-center gap-1.5 min-h-[44px]"
           >
             <Check className="w-4 h-4" />
             <span>Simpan Profil</span>

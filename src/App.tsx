@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TabType, UserProfile, Badge, DifficultyLevel } from './types';
 import WritingModule from './components/WritingModule';
 import ReadingModule from './components/ReadingModule';
@@ -34,8 +34,21 @@ import {
   Gamepad2,
   LogOut,
   Coins,
-  X
+  X,
+  RotateCw
 } from 'lucide-react';
+
+function useIsLandscape() {
+  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+  useEffect(() => {
+    const onResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isLandscape;
+}
+
+const GAME_TABS: TabType[] = ['istirahat'];
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -58,6 +71,32 @@ export default function App() {
   const [showBadgesModal, setShowBadgesModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [newBadgeEarned, setNewBadgeEarned] = useState<Badge | null>(null);
+  const isLandscape = useIsLandscape();
+  const isGameTab = GAME_TABS.includes(activeTab);
+
+  // Auto-rotate to landscape for game tabs (best-effort; works in Capacitor APK)
+  useEffect(() => {
+    if (!isGameTab) return;
+    const tryLock = async () => {
+      try {
+        const orientation = (screen as any).orientation;
+        if (orientation && typeof orientation.lock === 'function') {
+          await orientation.lock('landscape');
+        }
+      } catch {
+        /* browser/PWA: orientation lock not supported, show rotate hint instead */
+      }
+    };
+    tryLock();
+    return () => {
+      try {
+        const orientation = (screen as any).orientation;
+        if (orientation && typeof orientation.unlock === 'function') {
+          orientation.unlock();
+        }
+      } catch {}
+    };
+  }, [isGameTab]);
 
   // Save profile changes locally to the user's phone storage
   useEffect(() => {
@@ -553,92 +592,113 @@ export default function App() {
           {/* 4. Floating Bottom Navigation Bar: thumb-friendly on phone, spacious on tablet */}
           <nav
             id="floating-nav-bar"
-            className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 right-3 max-w-[420px] sm:max-w-lg md:max-w-xl mx-auto bg-white/95 backdrop-blur-xl border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.12)] rounded-full px-2 sm:px-4 py-1.5 flex items-center justify-around z-40 ring-1 ring-slate-900/5"
+            className="absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-2 right-2 sm:left-3 sm:right-3 max-w-[420px] sm:max-w-lg md:max-w-xl mx-auto bg-white/95 backdrop-blur-xl border border-white/90 shadow-[0_10px_35px_rgba(0,0,0,0.12)] rounded-2xl sm:rounded-full px-1.5 sm:px-4 py-1 flex items-center justify-around z-40 ring-1 ring-slate-900/5"
           >
             <button
               id="nav-home"
               onClick={() => changeTab('home')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'home'
                   ? 'bg-amber-100 text-amber-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Home className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Beranda</span>
+              <Home className="w-5 h-5" />
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Beranda</span>
             </button>
 
             <button
               id="nav-writing"
               onClick={() => changeTab('writing')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'writing'
                   ? 'bg-blue-100 text-blue-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Menulis</span>
+              <Pencil className="w-5 h-5" />
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Menulis</span>
             </button>
 
             <button
               id="nav-reading"
               onClick={() => changeTab('reading')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'reading'
                   ? 'bg-rose-100 text-rose-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Membaca</span>
+              <BookOpen className="w-5 h-5" />
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Membaca</span>
             </button>
 
             <button
               id="nav-math"
               onClick={() => changeTab('math')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'math'
                   ? 'bg-emerald-100 text-emerald-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Calculator className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Matematika</span>
+              <Calculator className="w-5 h-5" />
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Matematika</span>
             </button>
 
             <button
               id="nav-quiz"
               onClick={() => changeTab('quiz')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'quiz'
                   ? 'bg-amber-100 text-amber-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <div className="relative">
-                <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="absolute -top-1 -right-2 text-[7px] sm:text-[8px] bg-amber-500 text-white px-1 rounded-full font-bold leading-none">
+                <Trophy className="w-5 h-5" />
+                <span className="absolute -top-1.5 -right-2.5 text-[8px] sm:text-[9px] bg-amber-500 text-white px-1 rounded-full font-bold leading-none min-w-[14px] text-center">
                   200
                 </span>
               </div>
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Kuis</span>
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Kuis</span>
             </button>
 
             <button
               id="nav-istirahat"
               onClick={() => changeTab('istirahat')}
-              className={`flex flex-col items-center gap-0.5 py-1 sm:py-1.5 px-2.5 sm:px-4 rounded-2xl sm:rounded-full transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-0.5 py-1.5 sm:py-1.5 px-2 sm:px-4 rounded-xl sm:rounded-full transition-all active:scale-95 min-h-[48px] min-w-[48px] justify-center ${
                 activeTab === 'istirahat'
                   ? 'bg-teal-100 text-teal-800 font-bold shadow-xs scale-105'
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-[9px] sm:text-[11px] font-fredoka leading-none">Istirahat</span>
+              <Gamepad2 className="w-5 h-5" />
+              <span className="text-[10px] sm:text-[11px] font-fredoka leading-none">Istirahat</span>
             </button>
           </nav>
         </div>
+
+      {/* Rotate to landscape hint for games in portrait (browser/PWA fallback) */}
+      {isGameTab && !isLandscape && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center gap-4 p-6 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center animate-bounce">
+            <RotateCw className="w-10 h-10 text-white" />
+          </div>
+          <h3 className="font-fredoka font-bold text-xl text-white">
+            Putar HP ke Landscape
+          </h3>
+          <p className="text-sm text-slate-300 max-w-xs">
+            Game ini lebih seru dan rapi dimainkan dalam mode landscape (miring).
+          </p>
+          <button
+            onClick={() => changeTab('home')}
+            className="mt-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-fredoka font-bold text-sm rounded-2xl border border-white/20 min-h-[44px]"
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
+      )}
 
       {/* Fullscreen Istirahat Mode */}
       {activeTab === 'istirahat' && (
