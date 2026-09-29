@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { Capacitor } from '@capacitor/core';
 import { playSound, speakIndonesian } from '../utils/audio';
 import confetti from 'canvas-confetti';
 import {
@@ -112,17 +113,17 @@ interface HeldItem {
 
 // Tree and obstacle locations for physical collision detection
 const TREE_OBSTACLES = [
-  { x: -16, z: -10, radius: 2.2 },
-  { x: 16, z: -10, radius: 2.2 },
-  { x: -18, z: 5, radius: 2.2 },
-  { x: 18, z: 5, radius: 2.2 },
-  { x: -16, z: 20, radius: 2.2 },
-  { x: 16, z: 20, radius: 2.2 },
-  { x: -10, z: 26, radius: 2.2 },
-  { x: 10, z: 26, radius: 2.2 },
-  { x: -22, z: -18, radius: 2.2 },
-  { x: 22, z: -18, radius: 2.2 },
-  { x: 0, z: -10, radius: 1.2 }, // Flagpole
+  { x: -16, z: -10, radius: 1.1 },
+  { x: 16, z: -10, radius: 1.1 },
+  { x: -18, z: 5, radius: 1.1 },
+  { x: 18, z: 5, radius: 1.1 },
+  { x: -16, z: 20, radius: 1.1 },
+  { x: 16, z: 20, radius: 1.1 },
+  { x: -10, z: 26, radius: 1.1 },
+  { x: 10, z: 26, radius: 1.1 },
+  { x: -22, z: -18, radius: 1.1 },
+  { x: 22, z: -18, radius: 1.1 },
+  { x: 0, z: -10, radius: 0.5 }, // Flagpole
 ];
 
 // Available item catalog for continuous spawning
@@ -453,6 +454,17 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(true);
   const [distanceToDesk, setDistanceToDesk] = useState<number>(14);
+  const [teacherGender, setTeacherGender] = useState<'male' | 'female'>('female');
+  const [highScore, setHighScore] = useState<number>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('digilearn_3d_highscore_v1') : null;
+      const parsed = saved ? parseInt(saved, 10) : 0;
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [newRecord, setNewRecord] = useState<boolean>(false);
 
   // Backpack Drawer Modal State
   const [isBagOpen, setIsBagOpen] = useState<boolean>(false);
@@ -464,6 +476,10 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   useEffect(() => {
     isBagOpenRef.current = isBagOpen;
   }, [isBagOpen]);
+
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
 
   // Canvas & Three.js refs
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -480,6 +496,9 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   const worldItemsRef = useRef<WorldItem[]>([]);
   const collectionRingsRef = useRef<THREE.Group | null>(null);
   const itemCounterRef = useRef<number>(20);
+  const teacherMeshRef = useRef<THREE.Group | null>(null);
+  const teacherJumpRef = useRef<number>(0);
+  const scoreRef = useRef<number>(0);
 
   // Movement & Jump physics state
   const keysRef = useRef<{ [key: string]: boolean }>({});
@@ -566,6 +585,8 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     setWrongItemsCount(0);
     setHeldItems([]);
     setIsBagOpen(false);
+    setNewRecord(false);
+    setTeacherGender(Math.random() > 0.5 ? 'male' : 'female');
     playerPosRef.current = {
       x: 0,
       y: 0,
@@ -605,6 +626,19 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     setGameStage('gameover');
     setIsBagOpen(false);
     playSound('victory');
+    const finalScore = scoreRef.current;
+    setHighScore((prev) => {
+      if (finalScore > prev) {
+        try {
+          window.localStorage.setItem('digilearn_3d_highscore_v1', String(finalScore));
+        } catch {
+          // ignore storage errors
+        }
+        setNewRecord(true);
+        return finalScore;
+      }
+      return prev;
+    });
     confetti({
       particleCount: 100,
       spread: 80,
@@ -1108,6 +1142,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
       };
 
       setHeldItems((prev) => [...prev, newHeld]);
+      teacherJumpRef.current = Date.now();
 
       if (item.isSchoolItem) {
         playSound('apple');
@@ -1117,10 +1152,11 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         showToast(`⚠️ Masuk Tas: ${item.name} (${item.emoji}) - Ini BUKAN barang sekolah!`, true);
       }
 
-      // Schedule a new item to spawn in a new area to keep world populated!
+      // Schedule new items to spawn in new areas to keep world populated!
       if (sceneRef.current) {
         setTimeout(() => {
           if (sceneRef.current && gameStage === 'playing') {
+            spawnNewRandomItemInWorld(sceneRef.current);
             spawnNewRandomItemInWorld(sceneRef.current);
           }
         }, 1200);
@@ -1359,6 +1395,53 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     signBoard.position.set(COLLECTION_ZONE.x, 2, COLLECTION_ZONE.z + 1.2);
     zoneGroup.add(signPole, signBoard);
 
+    // Teacher character behind the desk (jumps with joy on pickup)
+    const teacher = new THREE.Group();
+    const teacherBodyMat = new THREE.MeshLambertMaterial({
+      color: teacherGender === 'male' ? 0x1e40af : 0xec4899,
+    });
+    const teacherBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.5), teacherBodyMat);
+    teacherBody.position.y = 1.1;
+    teacherBody.castShadow = true;
+    teacher.add(teacherBody);
+    const teacherHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 16, 16),
+      new THREE.MeshLambertMaterial({ color: 0xfcd9b8 })
+    );
+    teacherHead.position.y = 2.05;
+    teacherHead.castShadow = true;
+    teacher.add(teacherHead);
+    if (teacherGender === 'male') {
+      const pants = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.6, 0.45),
+        new THREE.MeshLambertMaterial({ color: 0x1e293b })
+      );
+      pants.position.y = 0.3;
+      teacher.add(pants);
+      const shortHair = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.2, 0.55),
+        new THREE.MeshLambertMaterial({ color: 0x18181b })
+      );
+      shortHair.position.y = 2.38;
+      teacher.add(shortHair);
+    } else {
+      const skirt = new THREE.Mesh(
+        new THREE.ConeGeometry(0.55, 0.9, 12),
+        new THREE.MeshLambertMaterial({ color: 0x9d174d })
+      );
+      skirt.position.y = 0.45;
+      teacher.add(skirt);
+      const longHair = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.9, 0.2),
+        new THREE.MeshLambertMaterial({ color: 0x3f3f46 })
+      );
+      longHair.position.set(0, 1.9, -0.3);
+      teacher.add(longHair);
+    }
+    teacher.position.set(COLLECTION_ZONE.x, 0, COLLECTION_ZONE.z - 2.2);
+    zoneGroup.add(teacher);
+    teacherMeshRef.current = teacher;
+
     scene.add(zoneGroup);
 
     // 3D Character
@@ -1368,8 +1451,8 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     scene.add(characterGroup);
     characterMeshRef.current = characterGroup;
 
-    // Initial 12 Items across courtyard
-    const initialItems = ITEM_CATALOG.slice(0, 12);
+    // Initial 24 Items across courtyard (doubled for denser world)
+    const initialItems = Array.from({ length: 24 }, (_, i) => ITEM_CATALOG[i % ITEM_CATALOG.length]);
     const worldItems: WorldItem[] = [];
     const spawnPositions: [number, number][] = [
       [-10, 8], [-14, 14], [-7, 18], [-12, -4], [-8, -12], [-14, 2],
@@ -1461,7 +1544,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         let nextZ = player.z + normZ * baseSpeed * delta;
 
         // Tree Obstacle Collision (Player CANNOT pass through trees!)
-        const PLAYER_RADIUS = 0.8;
+        const PLAYER_RADIUS = 0.5;
         for (let pass = 0; pass < 2; pass++) {
           for (const obs of TREE_OBSTACLES) {
             const minDist = obs.radius + PLAYER_RADIUS;
@@ -1575,6 +1658,14 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         collectionRingsRef.current.rotation.y += 0.8 * delta;
       }
 
+      if (teacherMeshRef.current) {
+        if (Date.now() - teacherJumpRef.current < 900) {
+          teacherMeshRef.current.position.y = Math.abs(Math.sin(elapsedTime * 10)) * 0.8;
+        } else {
+          teacherMeshRef.current.position.y = 0;
+        }
+      }
+
       // AUTOMATIC PROXIMITY PICKUP
       if (!isBagOpenRef.current) {
         worldItemsRef.current.forEach((item) => {
@@ -1617,7 +1708,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
       renderer.dispose();
       scene.clear();
     };
-  }, [gameStage, selectedChar, handleAutoPickup]);
+  }, [gameStage, selectedChar, teacherGender, handleAutoPickup]);
 
   // Touch handlers for virtual joystick — multitouch safe (tracks specific touch identifier)
   const joystickTouchId = useRef<number | null>(null);
@@ -1892,7 +1983,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
             )}
 
             {/* ON-SCREEN VIRTUAL JOYSTICK (Arah Jalan) — compact for landscape */}
-            <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-0.5">
+            <div className="absolute bottom-32 left-4 z-20 flex flex-col items-center gap-0.5">
               <div
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -2001,7 +2092,15 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                   <div className="bg-slate-800/80 border border-dashed border-rose-400/50 rounded-2xl p-2 text-center text-xs text-rose-300 flex items-center justify-center gap-2">
                     <Hand className="w-4 h-4 text-amber-400 animate-pulse" />
                     <span>
-                      <strong>Hold & Geser keluar</strong> atau tekan tombol <strong>Keluarkan 📤</strong>
+                      {!(Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth < 640)) ? (
+                        <>
+                          <strong>Geser item keluar untuk mengeluarkannya dari tas</strong> (atau tombol Keluarkan di layar besar)
+                        </>
+                      ) : (
+                        <>
+                          <strong>Geser item keluar untuk mengeluarkannya dari tas</strong>
+                        </>
+                      )}
                     </span>
                   </div>
 
@@ -2077,6 +2176,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                             </div>
 
                             {/* Discard Button (With direct pointer/click stopPropagation) */}
+                            {!(Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth < 640)) && (
                             <button
                               type="button"
                               onPointerDown={(e) => e.stopPropagation()}
@@ -2091,6 +2191,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                               <Trash2 className="w-4 h-4 text-white" />
                               <span>Keluarkan</span>
                             </button>
+                            )}
                           </div>
                         );
                       })
@@ -2134,6 +2235,15 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                   <strong className="font-fredoka text-2xl text-yellow-300">
                     {score} Poin
                   </strong>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300">🏆 Rekor: {highScore} poin</span>
+                  {newRecord && (
+                    <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/40">
+                      🎉 Rekor Baru!
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between text-xs">

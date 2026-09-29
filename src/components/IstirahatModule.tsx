@@ -157,6 +157,9 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   const [cooldownRemainingSeconds, setCooldownRemainingSeconds] = useState<number>(0);
   const [speedBoostNotification, setSpeedBoostNotification] = useState<string | null>(null);
   const [isFullscreenApple, setIsFullscreenApple] = useState<boolean>(true);
+  const [gameOverReason, setGameOverReason] = useState<string>('');
+  const [newRecord, setNewRecord] = useState<boolean>(false);
+  const [missBonus, setMissBonus] = useState<number>(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
@@ -180,6 +183,9 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     groundY: 480,
     currentScore: 0,
     currentSurvivalSec: 0,
+    consecutiveMissed: 0,
+    missBonus: 0,
+    monster: null as null | { x: number },
   });
 
   // Save selected char
@@ -237,7 +243,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           const speedStep = Math.floor(nextTime / 30);
           const newMultiplier = 1.0 + speedStep * 0.5;
           gameRef.current.speedMultiplier = newMultiplier;
-          gameRef.current.speed = gameRef.current.baseSpeed * newMultiplier;
+          gameRef.current.speed = gameRef.current.baseSpeed * (newMultiplier + gameRef.current.missBonus);
 
           playSound('star');
           const notice = `⚡ TANTANGAN NAIK! Kecepatan +0.5x (${newMultiplier.toFixed(1)}x)`;
@@ -323,10 +329,16 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     g.currentSurvivalSec = 0;
     g.speedMultiplier = 1.0;
     g.speed = g.baseSpeed;
+    g.consecutiveMissed = 0;
+    g.missBonus = 0;
+    g.monster = null;
 
     setApplesCollected(0);
     setSessionTimeSeconds(0);
     setSpeedBoostNotification(null);
+    setGameOverReason('');
+    setNewRecord(false);
+    setMissBonus(0);
     setGameState('playing');
     playSound('pop');
   };
@@ -334,10 +346,13 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
   // Trigger game over
   const handleGameOver = useCallback((reason: string) => {
     setGameState('gameover');
+    setGameOverReason(reason);
     playSound('wrong');
 
     const finalScore = gameRef.current.currentScore;
-    if (finalScore > highScore) {
+    const isRecord = finalScore > highScore;
+    setNewRecord(isRecord && finalScore > 0);
+    if (isRecord) {
       setHighScore(finalScore);
       try {
         localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, finalScore.toString());
@@ -469,6 +484,27 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
           if (apple.x < -30) {
             g.apples.splice(i, 1);
+            // TANTANGAN LEWAT: apel terlewat berturut-turut
+            g.consecutiveMissed += 1;
+            if (g.consecutiveMissed === 5) {
+              g.missBonus += 0.5;
+              g.speed = g.baseSpeed * (g.speedMultiplier + g.missBonus);
+              setMissBonus(g.missBonus);
+              playSound('star');
+              const notice = `⚠️ 5 apel terlewat! Kecepatan +0.5x`;
+              setSpeedBoostNotification(notice);
+              setTimeout(() => {
+                setSpeedBoostNotification((curr) => (curr === notice ? null : curr));
+              }, 3000);
+            } else if (g.consecutiveMissed === 10 && !g.monster) {
+              g.monster = { x: width + 40 };
+              playSound('wrong');
+              const notice = `👹 Monster datang! Jangan sampai tertangkap!`;
+              setSpeedBoostNotification(notice);
+              setTimeout(() => {
+                setSpeedBoostNotification((curr) => (curr === notice ? null : curr));
+              }, 3000);
+            }
             continue;
           }
 
@@ -480,6 +516,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
           if (dist < 32 && !apple.collected) {
             apple.collected = true;
             g.currentScore += apple.points;
+            g.consecutiveMissed = 0;
             setApplesCollected(g.currentScore);
 
             if (apple.isGolden) {
@@ -513,6 +550,16 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             });
 
             g.apples.splice(i, 1);
+          }
+        }
+
+        // Monster chase (muncul setelah 10 apel terlewat berturut-turut)
+        if (g.monster) {
+          g.monster.x -= g.speed * 1.3 + 0.8;
+          const charX = 85;
+          if (Math.abs(g.monster.x - charX) < 30) {
+            handleGameOver('Diserang monster! 👹');
+            return;
           }
         }
 
@@ -566,6 +613,23 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.restore();
       });
 
+      // 4b. Draw Monster (mengejar setelah 10 apel terlewat)
+      if (g.monster) {
+        const mx = g.monster.x;
+        const my = g.charY - 10 + Math.sin(g.frameCount * 0.3) * 6;
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👹', 0, 2);
+        ctx.restore();
+      }
+
       // 5. Draw Particles
       for (let i = g.particles.length - 1; i >= 0; i--) {
         const p = g.particles[i];
@@ -607,9 +671,10 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.restore();
       }
 
-      // 7. Draw Character
+      // 7. Draw Character (dengan animasi terbang: kepak sayap + melayang)
       const charX = 85;
-      const charDrawY = gameState === 'playing' ? g.charY : 180 + Math.sin(g.frameCount * 0.05) * 12;
+      const flyBob = gameState === 'playing' ? Math.sin(g.frameCount * 0.25) * 4 : 0;
+      const charDrawY = gameState === 'playing' ? g.charY + flyBob : 180 + Math.sin(g.frameCount * 0.05) * 12;
 
       ctx.save();
       ctx.translate(charX, charDrawY);
@@ -619,6 +684,32 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       ctx.beginPath();
       ctx.arc(0, 0, 24, 0, Math.PI * 2);
       ctx.fill();
+
+      // Sayap mengepak (flap mengikuti frame agar terlihat hidup)
+      const flap = Math.sin(g.frameCount * 0.6) * 0.5;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.8)';
+      ctx.lineWidth = 1.5;
+      // Sayap kiri
+      ctx.save();
+      ctx.translate(-14, -4);
+      ctx.rotate(-0.5 - flap);
+      ctx.beginPath();
+      ctx.ellipse(-10, 0, 12, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      // Sayap kanan
+      ctx.save();
+      ctx.translate(14, -4);
+      ctx.rotate(0.5 + flap);
+      ctx.beginPath();
+      ctx.ellipse(10, 0, 12, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
 
       ctx.font = '36px sans-serif';
       ctx.textAlign = 'center';
@@ -683,7 +774,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         ctx.font = 'bold 13px Fredoka, sans-serif';
         ctx.fillStyle = '#b45309';
         ctx.textAlign = 'center';
-        ctx.fillText(`⚡ ${g.speedMultiplier.toFixed(1)}x Cepat`, 195, 33);
+        ctx.fillText(`⚡ ${(g.speedMultiplier + g.missBonus).toFixed(1)}x Cepat`, 195, 33);
 
         // Survived time
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
@@ -772,7 +863,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
             {/* Speed Multiplier Live Pill (Every 30 seconds) */}
             <div className="bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 rounded-xl flex items-center gap-1 text-yellow-300 text-xs font-bold">
               <Zap className="w-3.5 h-3.5" />
-              <span>{(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5).toFixed(1)}x</span>
+              <span>{(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5 + missBonus).toFixed(1)}x</span>
             </div>
 
             {/* Quota Remaining */}
@@ -865,9 +956,9 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
                 <div className="bg-slate-900/70 border border-amber-400/30 rounded-2xl p-3 text-left flex items-start gap-2.5 text-[11px] text-amber-200">
                   <Zap className="w-4 h-4 text-yellow-300 flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-yellow-300">Tantangan Kecepatan:</span>
+                    <span className="font-bold text-yellow-300">Tantangan Seru:</span>
                     <p className="text-slate-300 mt-0.5 leading-snug">
-                      Setiap <strong>30 detik</strong>, laju permainan akan bertambah <strong>+0.5x</strong> lebih cepat. Siapkan refleksmu!
+                      Setiap <strong>30 detik</strong> kecepatan +0.5x. Lewati 5 apel berturut-turut = +0.5x! Awas: lewati 10 apel = monster 👹 datang!
                     </p>
                   </div>
                 </div>
@@ -905,11 +996,16 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
                 <div>
                   <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">
-                    Karakter Menyentuh Tanah
+                    {gameOverReason || 'Permainan Selesai'}
                   </span>
                   <h3 className="font-fredoka font-bold text-2xl drop-shadow-md mt-0.5">
                     Permainan Selesai!
                   </h3>
+                  {newRecord && (
+                    <span className="inline-block mt-1.5 text-xs font-fredoka font-bold text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-400 px-3 py-1 rounded-full animate-bounce">
+                      🎉 Rekor Baru!
+                    </span>
+                  )}
                 </div>
 
                 {/* Score Summary Box */}
@@ -940,7 +1036,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
                       <span>Kecepatan Tertinggi:</span>
                     </span>
                     <strong className="font-fredoka text-sm text-amber-300">
-                      {(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5).toFixed(1)}x
+                      {(1.0 + Math.floor(sessionTimeSeconds / 30) * 0.5 + missBonus).toFixed(1)}x
                     </strong>
                   </div>
 
