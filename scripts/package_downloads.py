@@ -10,8 +10,8 @@ ANDROID_DIR = os.path.join(BASE_DIR, "android")
 
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
-# 1. Package AnakPintar-Android-Project.zip
-zip_path = os.path.join(DOWNLOADS_DIR, "AnakPintar-Android-Project.zip")
+# 1. Package DigiLearn-Android-Project.zip
+zip_path = os.path.join(DOWNLOADS_DIR, "DigiLearn-Android-Project.zip")
 print(f"Creating {zip_path}...")
 
 exclude_dirs = {".gradle", "build", ".idea", ".git", "node_modules"}
@@ -62,7 +62,7 @@ with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                 zipf.write(full_p, rel_p)
 
     # Add README instructions
-    readme_content = """# Anak Pintar - Native Android APK Project
+    readme_content = """# DigiLearn - Native Android APK Project
 ===================================================
 
 Aplikasi edukasi interaktif anak usia 6-10 tahun:
@@ -77,16 +77,16 @@ Proyek ini sudah dilengkapi dengan konfigurasi GitHub Actions Cloud CI (.github/
 Tidak perlu menginstall Android Studio atau Java di komputer Anda!
 
 Langkah-langkah:
-1. Buat repository baru di GitHub (misal: 'anak-pintar-app').
+1. Buat repository baru di GitHub (misal: 'digilearn-app').
 2. Upload / push seluruh berkas proyek ini ke repository GitHub Anda:
-   git remote add origin https://github.com/USERNAME/anak-pintar-app.git
+   git remote add origin https://github.com/USERNAME/digilearn-app.git
    git branch -M main
    git push -u origin main
 3. Buka tab **Actions** di repository GitHub Anda.
 4. Workflow **"Build Native Android APK (GitHub Cloud)"** akan otomatis berjalan.
 5. Setelah selesai (berwarna hijau centang), klik hasil workflow dan unduh file APK dari bagian **Artifacts**:
-   - `AnakPintar-release.apk`
-   - `AnakPintar-debug.apk`
+   - `DigiLearn-release.apk`
+   - `DigiLearn-debug.apk`
 6. File APK tersebut adalah Native APK resmi yang siap dipasang langsung di HP atau Tablet Android.
 
 ## CARA 2: COMPILE LOKAL DENGAN ANDROID STUDIO
@@ -101,8 +101,8 @@ Langkah-langkah:
 
 print(f"Project ZIP created: {os.path.getsize(zip_path)} bytes")
 
-# 2. Package AnakPintar.apk
-apk_path = os.path.join(DOWNLOADS_DIR, "AnakPintar.apk")
+# 2. Package DigiLearn.apk
+apk_path = os.path.join(DOWNLOADS_DIR, "DigiLearn.apk")
 
 # Check if a compiled debug apk already exists
 built_debug_apk = os.path.join(ANDROID_DIR, "app", "build", "outputs", "apk", "debug", "app-debug.apk")
@@ -146,7 +146,7 @@ else:
                     apkf.write(full_p, rel_p)
 
         # Add package descriptor
-        apkf.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nCreated-By: AnakPintar-Capacitor-Android\nPackage: com.anakpintar.belajar\n")
+        apkf.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nCreated-By: DigiLearn-Capacitor-Android\nPackage: com.digilearn.app\n")
     print(f"Stand-alone APK package created at {apk_path} ({os.path.getsize(apk_path)} bytes)")
 
 print("Package downloads completed successfully!")

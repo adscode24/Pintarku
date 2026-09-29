@@ -1,6 +1,6 @@
 # Panduan Kompilasi Native Android APK Menggunakan GitHub Cloud (GitHub Actions)
 
-Aplikasi **Anak Pintar** adalah aplikasi native Android berbasis Capacitor yang 100% identik dengan kode sumber (bukan PWA, melainkan Native APK dengan runtime Android WebView, splash screen native, icon adaptive Android, dan plugin native).
+Aplikasi **DigiLearn** adalah aplikasi native Android berbasis Capacitor yang 100% identik dengan kode sumber (bukan PWA, melainkan Native APK dengan runtime Android WebView, splash screen native, icon adaptive Android, dan plugin native).
 
 ---
 
@@ -55,19 +55,19 @@ git push -u origin main
 ### 3. Mengunduh File APK Native
 1. Saat alur kerja selesai (ditandai dengan centang hijau), klik judul alur kerja tersebut.
 2. Gulir ke bawah ke bagian **Artifacts**.
-3. Klik dan unduh arsip **`AnakPintar-Native-APK`**.
+3. Klik dan unduh arsip **`DigiLearn-Native-APK`**.
 4. Di dalamnya terdapat file:
-   - **`AnakPintar-release.apk`**: File APK rilis siap pasang langsung di HP atau Tablet Android.
-   - **`AnakPintar-debug.apk`**: File APK debug untuk pengujian langsung.
+   - **`DigiLearn-release.apk`**: File APK rilis siap pasang langsung di HP atau Tablet Android.
+   - **`DigiLearn-debug.apk`**: File APK debug untuk pengujian langsung.
 
 ---
 
 ### 4. Memasang APK di Perangkat Android
-1. Kirim file `AnakPintar-release.apk` ke HP/Tablet Android Anda (via WhatsApp, Telegram, Google Drive, atau kabel data).
+1. Kirim file `DigiLearn-release.apk` ke HP/Tablet Android Anda (via WhatsApp, Telegram, Google Drive, atau kabel data).
 2. Ketuk file APK untuk memulai instalasi.
 3. Jika muncul konfirmasi *“Izinkan pemasangan dari sumber ini”*, aktifkan izin tersebut.
 4. Tekan **Pasang / Install**.
-5. Aplikasi **Anak Pintar** kini terpasang sebagai aplikasi native penuh di HP/Tablet Android Anda!
+5. Aplikasi **DigiLearn** kini terpasang sebagai aplikasi native penuh di HP/Tablet Android Anda!
 
 ---
 

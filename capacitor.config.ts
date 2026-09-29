@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.anakpintar.belajar',
-  appName: 'Anak Pintar',
+  appId: 'com.digilearn.app',
+  appName: 'DigiLearn',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

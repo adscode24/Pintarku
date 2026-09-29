@@ -339,7 +339,7 @@ export default function App() {
                 <div className="relative z-10 max-w-[85%]">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-100">
                     <Sparkles className="w-4 h-4 text-yellow-200" />
-                    <span>Anak Pintar Belajar</span>
+                    <span>DigiLearn Belajar</span>
                   </div>
                   <h2 className="text-lg sm:text-2xl font-fredoka font-bold mt-1 leading-tight">
                     Halo, {profile.name}! 👋
@@ -674,7 +674,7 @@ export default function App() {
                   Waktu Istirahat (Game Apel)
                 </h2>
                 <p className="text-[11px] text-slate-400">
-                  Anak Pintar • Kumpulkan buah apel santai
+                  DigiLearn • Kumpulkan buah apel santai
                 </p>
               </div>
             </div>

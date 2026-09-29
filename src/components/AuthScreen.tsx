@@ -165,7 +165,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
             ⭐
           </div>
           <h1 className="text-2xl font-fredoka font-bold text-slate-800">
-            Anak Pintar
+            DigiLearn
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             Media Belajar Membaca, Menulis & Berhitung Anak 6-10 Tahun

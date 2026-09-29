@@ -1,4 +1,4 @@
-# Kepatuhan Google Play — Anak Pintar (Target: Anak 6–10 thn)
+# Kepatuhan Google Play — DigiLearn (Target: Anak 6–10 thn)
 
 ## Status kepatuhan kode (terpenuhi di repo)
 - [x] Tanpa iklan, tanpa SDK analytics, tanpa pelacak (`package.json` bersih).

@@ -1,4 +1,4 @@
-package com.anakpintar.belajar;
+package com.digilearn.app;
 
 import com.getcapacitor.BridgeActivity;
 

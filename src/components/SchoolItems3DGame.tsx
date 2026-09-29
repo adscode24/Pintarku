@@ -1892,7 +1892,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
             )}
 
             {/* ON-SCREEN VIRTUAL JOYSTICK (Arah Jalan) — compact for landscape */}
-            <div className="absolute bottom-4 left-4 z-20 flex flex-col items-center gap-0.5">
+            <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-0.5">
               <div
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
