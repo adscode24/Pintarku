@@ -1619,9 +1619,14 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     };
   }, [gameStage, selectedChar, handleAutoPickup]);
 
-  // Touch handlers for virtual joystick
+  // Touch handlers for virtual joystick — multitouch safe (tracks specific touch identifier)
+  const joystickTouchId = useRef<number | null>(null);
+
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const touch = e.touches[0];
+    // Only claim the first touch that lands on the joystick
+    if (joystickTouchId.current !== null) return;
+    const touch = e.changedTouches[0];
+    joystickTouchId.current = touch.identifier;
     const rect = e.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -1637,21 +1642,34 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!joystickRef.current.active) return;
-    const touch = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+    if (joystickTouchId.current === null) return;
+    // Find our specific touch among all active touches
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (touch.identifier === joystickTouchId.current) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
-    const dx = (touch.clientX - centerX) / (rect.width / 2);
-    const dy = (touch.clientY - centerY) / (rect.height / 2);
+        const dx = (touch.clientX - centerX) / (rect.width / 2);
+        const dy = (touch.clientY - centerY) / (rect.height / 2);
 
-    joystickRef.current.x = Math.max(-1, Math.min(1, dx));
-    joystickRef.current.y = Math.max(-1, Math.min(1, dy));
+        joystickRef.current.x = Math.max(-1, Math.min(1, dx));
+        joystickRef.current.y = Math.max(-1, Math.min(1, dy));
+        break;
+      }
+    }
   };
 
-  const handleTouchEnd = () => {
-    joystickRef.current = { x: 0, y: 0, active: false };
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    // Only release if it was our touch
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickTouchId.current) {
+        joystickTouchId.current = null;
+        joystickRef.current = { x: 0, y: 0, active: false };
+        break;
+      }
+    }
   };
 
   return (
@@ -1897,12 +1915,13 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
               </span>
             </div>
 
-            {/* ACTION BUTTONS: TOMBOL LOMPAT & TOMBOL TAS — compact */}
+            {/* ACTION BUTTONS: TOMBOL LOMPAT & TOMBOL TAS — multitouch safe */}
             <div className="absolute bottom-4 right-4 z-20 flex items-end gap-2 pointer-events-auto">
-              {/* TOMBOL LOMPAT */}
+              {/* TOMBOL LOMPAT — onTouchStart for instant response while joystick active */}
               <button
+                onTouchStart={(e) => { e.stopPropagation(); handleJump(); }}
                 onClick={handleJump}
-                className="w-14 h-14 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 border-2 border-amber-200 text-white flex flex-col items-center justify-center gap-0.5 shadow-xl shadow-amber-500/40 active:scale-90 transition-transform"
+                className="w-14 h-14 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 border-2 border-amber-200 text-white flex flex-col items-center justify-center gap-0.5 shadow-xl shadow-amber-500/40 active:scale-90 transition-transform touch-none select-none"
                 title="Lompat (Spasi)"
               >
                 <span className="text-xl leading-none">🦘</span>
@@ -1911,13 +1930,18 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                 </span>
               </button>
 
-              {/* TOMBOL TAS */}
+              {/* TOMBOL TAS — onTouchStart for instant response while joystick active */}
               <button
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  playSound('pop');
+                  setIsBagOpen((prev) => !prev);
+                }}
                 onClick={() => {
                   playSound('pop');
                   setIsBagOpen((prev) => !prev);
                 }}
-                className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 hover:from-sky-400 hover:to-purple-500 border-2 border-sky-300 text-white flex flex-col items-center justify-center gap-0.5 shadow-2xl shadow-indigo-500/50 active:scale-90 transition-transform relative"
+                className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 hover:from-sky-400 hover:to-purple-500 border-2 border-sky-300 text-white flex flex-col items-center justify-center gap-0.5 shadow-2xl shadow-indigo-500/50 active:scale-90 transition-transform relative touch-none select-none"
                 title="Buka Isi Tas Ransel"
               >
                 <Backpack className="w-6 h-6 text-yellow-300" />
