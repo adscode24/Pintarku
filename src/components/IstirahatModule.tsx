@@ -186,6 +186,12 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     consecutiveMissed: 0,
     missBonus: 0,
     monster: null as null | { x: number },
+    // Frame-rate independent timing (dt = jumlah frame-60fps per tick)
+    animTime: 0,
+    spawnTimer: 0,
+    cloudDist1: 0,
+    cloudDist2: 160,
+    groundDist: 0,
   });
 
   // Save selected char
@@ -332,6 +338,11 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     g.consecutiveMissed = 0;
     g.missBonus = 0;
     g.monster = null;
+    g.animTime = 0;
+    g.spawnTimer = 0;
+    g.cloudDist1 = 0;
+    g.cloudDist2 = 160;
+    g.groundDist = 0;
 
     setApplesCollected(0);
     setSessionTimeSeconds(0);
@@ -390,8 +401,15 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
     const activeChar = CHARACTERS.find((c) => c.id === selectedChar) || CHARACTERS[0];
 
-    const render = () => {
+    // Delta-time: samakan kecepatan di semua refresh-rate (60/90/120Hz).
+    // dt = 1.0 berarti satu frame @60fps; dijepit maks 3 agar tidak lompat saat lag.
+    let lastTime = performance.now();
+    const render = (now: number) => {
       const g = gameRef.current;
+      const dtMs = now - lastTime;
+      lastTime = now;
+      const dt = Math.max(0.1, Math.min(dtMs / 16.667, 3));
+      g.animTime += dt / 60;
       g.frameCount++;
 
       // 1. Sky gradient
@@ -402,10 +420,12 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // 2. Moving clouds
+      // 2. Moving clouds (berbasis jarak tempuh agar konsisten di semua fps)
       const cloudSpeed = (gameState === 'playing' ? 0.6 : 0.2) * g.speedMultiplier;
-      const cloudOffset1 = (g.frameCount * cloudSpeed) % (width + 120);
-      const cloudOffset2 = (g.frameCount * cloudSpeed * 0.7 + 160) % (width + 120);
+      g.cloudDist1 = (g.cloudDist1 + cloudSpeed * dt) % (width + 120);
+      g.cloudDist2 = (g.cloudDist2 + cloudSpeed * 0.7 * dt) % (width + 120);
+      const cloudOffset1 = g.cloudDist1;
+      const cloudOffset2 = g.cloudDist2;
 
       const drawCloud = (cx: number, cy: number, scale = 1) => {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
@@ -431,13 +451,15 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
       // 3. Update physics if playing
       if (gameState === 'playing') {
-        g.charVy += g.gravity;
-        g.charY += g.charVy;
+        g.charVy += g.gravity * dt;
+        g.charY += g.charVy * dt;
         g.charRotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, g.charVy * 0.08));
 
-        // Spawn Apples
+        // Spawn Apples (timer berbasis dt, bukan jumlah frame)
         const spawnInterval = Math.max(20, Math.round(48 / Math.sqrt(g.speedMultiplier)));
-        if (g.frameCount % spawnInterval === 0) {
+        g.spawnTimer += dt;
+        if (g.spawnTimer >= spawnInterval) {
+          g.spawnTimer = 0;
           const randType = Math.random();
 
           if (randType < 0.2) {
@@ -480,7 +502,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         // Update & Move Apples
         for (let i = g.apples.length - 1; i >= 0; i--) {
           const apple = g.apples[i];
-          apple.x -= g.speed;
+          apple.x -= g.speed * dt;
 
           if (apple.x < -30) {
             g.apples.splice(i, 1);
@@ -555,7 +577,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
         // Monster chase (muncul setelah 10 apel terlewat berturut-turut)
         if (g.monster) {
-          g.monster.x -= g.speed * 1.3 + 0.8;
+          g.monster.x -= (g.speed * 1.3 + 0.8) * dt;
           const charX = 85;
           if (Math.abs(g.monster.x - charX) < 30) {
             handleGameOver('Diserang monster! 👹');
@@ -579,7 +601,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
       // 4. Draw Apples
       g.apples.forEach((apple) => {
-        const floatY = apple.y + Math.sin(g.frameCount * 0.1 + apple.floatOffset) * 5;
+        const floatY = apple.y + Math.sin(g.animTime * 6 + apple.floatOffset) * 5;
 
         ctx.save();
         ctx.translate(apple.x, floatY);
@@ -616,7 +638,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       // 4b. Draw Monster (mengejar setelah 10 apel terlewat)
       if (g.monster) {
         const mx = g.monster.x;
-        const my = g.charY - 10 + Math.sin(g.frameCount * 0.3) * 6;
+        const my = g.charY - 10 + Math.sin(g.animTime * 18) * 6;
         ctx.save();
         ctx.translate(mx, my);
         ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
@@ -633,9 +655,9 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       // 5. Draw Particles
       for (let i = g.particles.length - 1; i >= 0; i--) {
         const p = g.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.alpha -= 0.025;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.alpha -= 0.025 * dt;
 
         if (p.alpha <= 0) {
           g.particles.splice(i, 1);
@@ -654,8 +676,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       // 6. Draw Floating Score Text
       for (let i = g.floatingScores.length - 1; i >= 0; i--) {
         const fs = g.floatingScores[i];
-        fs.y += fs.vy;
-        fs.alpha -= 0.025;
+        fs.y += fs.vy * dt;
+        fs.alpha -= 0.025 * dt;
 
         if (fs.alpha <= 0) {
           g.floatingScores.splice(i, 1);
@@ -673,8 +695,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
       // 7. Draw Character (dengan animasi terbang: kepak sayap + melayang)
       const charX = 85;
-      const flyBob = gameState === 'playing' ? Math.sin(g.frameCount * 0.25) * 4 : 0;
-      const charDrawY = gameState === 'playing' ? g.charY + flyBob : 180 + Math.sin(g.frameCount * 0.05) * 12;
+      const flyBob = gameState === 'playing' ? Math.sin(g.animTime * 15) * 4 : 0;
+      const charDrawY = gameState === 'playing' ? g.charY + flyBob : 180 + Math.sin(g.animTime * 3) * 12;
 
       ctx.save();
       ctx.translate(charX, charDrawY);
@@ -685,8 +707,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       ctx.arc(0, 0, 24, 0, Math.PI * 2);
       ctx.fill();
 
-      // Sayap mengepak (flap mengikuti frame agar terlihat hidup)
-      const flap = Math.sin(g.frameCount * 0.6) * 0.5;
+      // Sayap mengepak (flap mengikuti waktu agar konsisten di semua fps)
+      const flap = Math.sin(g.animTime * 36) * 0.5;
       ctx.save();
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.8)';
@@ -736,7 +758,8 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
       ctx.fillStyle = '#22c55e';
       ctx.fillRect(0, g.groundY, width, 8);
 
-      const groundOffset = (g.frameCount * g.speed) % 40;
+      g.groundDist = (g.groundDist + g.speed * dt) % 40;
+      const groundOffset = g.groundDist;
       ctx.fillStyle = '#16a34a';
       for (let gx = -groundOffset; gx < width + 40; gx += 40) {
         ctx.beginPath();
@@ -841,7 +864,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
     return (
       <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between select-none overflow-hidden text-white font-sans">
         {/* Fullscreen Top Navigation Bar */}
-        <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between safe-top">
+        <div className="relative z-30 px-3 py-2 bg-slate-900/85   border-b border-white/10 flex items-center justify-between safe-top">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-red-500/20 border border-red-400 flex items-center justify-center text-lg">
               🍎
@@ -908,7 +931,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
         <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gradient-to-b from-sky-950 via-slate-900 to-slate-950 p-2 overflow-hidden">
           {/* 1. CHARACTER SELECTION FIRST (WAJIB PILIH KARAKTER DULU) */}
           {gameState === 'character_select' && (
-            <div className="absolute inset-0 z-40 bg-gradient-to-b from-slate-900/95 via-sky-950/95 to-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-y-auto">
+            <div className="absolute inset-0 z-40 bg-gradient-to-b from-slate-900/95 via-sky-950/95 to-slate-900/95   flex flex-col items-center justify-center p-4 overflow-y-auto">
               <div className="max-w-md w-full bg-slate-800/90 border border-white/20 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-center my-auto animate-in zoom-in-95">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
@@ -989,7 +1012,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
 
             {/* GAME OVER OVERLAY */}
             {gameState === 'gameover' && (
-              <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-white text-center gap-3 animate-in zoom-in-95">
+              <div className="absolute inset-0 bg-black/75   flex flex-col items-center justify-center p-4 text-white text-center gap-3 animate-in zoom-in-95">
                 <div className="w-16 h-16 rounded-3xl bg-rose-500/80 border-2 border-rose-300 flex items-center justify-center text-3xl shadow-lg">
                   💥
                 </div>
@@ -1009,7 +1032,7 @@ export default function IstirahatModule({ onNavigateTab, onEarnStar, onExit }: I
                 </div>
 
                 {/* Score Summary Box */}
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 w-full max-w-[280px] border border-white/20 flex flex-col gap-2">
+                <div className="bg-white/10   rounded-2xl p-3 w-full max-w-[280px] border border-white/20 flex flex-col gap-2">
                   <div className="flex items-center justify-between text-xs px-1">
                     <span className="flex items-center gap-1 text-slate-200">
                       <Apple className="w-4 h-4 text-red-400" />

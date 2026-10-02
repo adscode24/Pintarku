@@ -1253,16 +1253,19 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Kualitas renderer adaptif: native/APK pakai mode hemat GPU agar
+    // pergerakan semulus PWA (tanpa antialias, shadow mati, pixel dibatasi).
+    const isNativeGame = Capacitor.isNativePlatform();
+    const renderer = new THREE.WebGLRenderer({ antialias: !isNativeGame, alpha: false, powerPreference: 'high-performance' });
     rendererRef.current = renderer;
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isNativeGame ? 1.5 : 2));
+    renderer.shadowMap.enabled = !isNativeGame;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    const ambientLight = new THREE.AmbientLight(0xffffff, isNativeGame ? 1.0 : 0.75);
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.15);
@@ -1766,7 +1769,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
   return (
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between select-none overflow-hidden text-white font-sans">
       {/* 1. TOP STATUS BAR / HEADER */}
-      <div className="relative z-30 px-3 py-2 bg-slate-900/85 backdrop-blur-md border-b border-white/10 flex items-center justify-between safe-top">
+      <div className="relative z-30 px-3 py-2 bg-slate-900/85   border-b border-white/10 flex items-center justify-between safe-top">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-lg shadow-sm">
             🎒
@@ -1840,7 +1843,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         {/* CHARACTER SELECTION STAGE */}
         {gameStage === 'character_select' && (
           <div className="absolute inset-0 z-40 bg-gradient-to-b from-slate-900 via-sky-950 to-slate-900 flex flex-col items-center justify-center p-4 overflow-y-auto">
-            <div className="max-w-md w-full bg-slate-800/90 backdrop-blur-xl border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-center my-auto animate-in zoom-in-95">
+            <div className="max-w-md w-full bg-slate-800/90   border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-center my-auto animate-in zoom-in-95">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
                   Pilih Karakter Terlebih Dahulu
@@ -1919,14 +1922,14 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
         )}
 
         {/* 3D PLAYING CANVAS */}
-        <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+        <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing touch-none select-none" />
 
         {/* IN-GAME HUD OVERLAYS */}
         {gameStage === 'playing' && (
           <>
             {/* TOP-LEFT: RADAR MINI-MAP — compact for all orientations */}
             <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 pointer-events-auto">
-              <div className="bg-slate-900/85 backdrop-blur-md border border-emerald-400/50 rounded-xl p-1.5 shadow-2xl flex flex-col items-center">
+              <div className="bg-slate-900/85   border border-emerald-400/50 rounded-xl p-1.5 shadow-2xl flex flex-col items-center">
                 <div className="flex items-center justify-between w-full px-0.5 mb-0.5 text-[9px]">
                   <span className="font-bold text-emerald-300 flex items-center gap-0.5 uppercase tracking-wider">
                     <Compass className="w-2.5 h-2.5 text-emerald-400" />
@@ -1960,7 +1963,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
             {/* Floating Toast + Zone Notification — single slot top-center */}
             {toastMessage && (
               <div
-                className={`absolute top-2 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-xl border font-bold text-[11px] shadow-xl backdrop-blur-md animate-in slide-in-from-top duration-200 flex items-center gap-1.5 max-w-[80%] text-center ${
+                className={`absolute top-2 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-xl border font-bold text-[11px] shadow-xl   animate-in slide-in-from-top duration-200 flex items-center gap-1.5 max-w-[80%] text-center ${
                   toastMessage.isError
                     ? 'bg-rose-600/90 text-white border-rose-300'
                     : 'bg-emerald-600/90 text-white border-emerald-300'
@@ -1977,7 +1980,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
 
             {/* IN-ZONE NOTIFICATION — below toast */}
             {isInsideCollectionZone() && (
-              <div className="absolute top-10 left-1/2 -translate-x-1/2 z-25 bg-amber-500/90 backdrop-blur-md text-slate-950 font-fredoka font-bold text-[10px] px-3 py-1 rounded-full border-2 border-white shadow-xl animate-pulse flex items-center gap-1">
+              <div className="absolute top-10 left-1/2 -translate-x-1/2 z-25 bg-amber-500/90   text-slate-950 font-fredoka font-bold text-[10px] px-3 py-1 rounded-full border-2 border-white shadow-xl animate-pulse flex items-center gap-1">
                 <span>🚩 Area Meja Guru!</span>
               </div>
             )}
@@ -1988,7 +1991,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
-                className="w-20 h-20 rounded-full bg-slate-900/60 backdrop-blur-md border-2 border-white/30 flex items-center justify-center relative touch-none shadow-xl active:border-emerald-400"
+                className="w-20 h-20 rounded-full bg-slate-900/60   border-2 border-white/30 flex items-center justify-center relative touch-none shadow-xl active:border-emerald-400"
               >
                 <div className="w-1 h-1 rounded-full bg-white/40" />
 
@@ -2054,7 +2057,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
             {/* 3. INTERACTIVE BACKPACK MODAL / TRAY */}
             {isBagOpen && (
               <div
-                className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-end sm:justify-center p-3 animate-in fade-in duration-200"
+                className="absolute inset-0 z-40 bg-black/60   flex flex-col items-center justify-end sm:justify-center p-3 animate-in fade-in duration-200"
                 onClick={() => setIsBagOpen(false)}
               >
                 <div
@@ -2213,7 +2216,7 @@ export default function SchoolItems3DGame({ onClose, onEarnStar }: SchoolItems3D
 
         {/* 4. GAME OVER MODAL (Waktu 60 Detik Habis) */}
         {gameStage === 'gameover' && (
-          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in zoom-in-95">
+          <div className="absolute inset-0 z-50 bg-black/80   flex flex-col items-center justify-center p-4 animate-in zoom-in-95">
             <div className="max-w-md w-full bg-slate-900 border-2 border-emerald-400/50 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4">
               <div className="w-20 h-20 rounded-3xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-inner animate-bounce">
                 🏆
